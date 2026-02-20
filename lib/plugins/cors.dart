@@ -9,31 +9,32 @@ class Cors {
 
    Cors({
     this.origin = '*',
-    this.methods = 'GET, POST, PUT, DELETE, OPTIONS',
+    this.methods = 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
     this.headers = 'Origin, Content-Type, Accept, Authorization',
   });
 
   Middleware handle() {
     return (Context ctx, Next next) async {
+      final corsHeaders = {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': methods,
+        'Access-Control-Allow-Headers': headers,
+      };
+
       if (ctx.request.method == 'OPTIONS') {
         return Response(
           statusCode: 204,
-          headers: {
-            'Access-Control-Allow-Origin': origin,
-            'Access-Control-Allow-Methods': methods,
-            'Access-Control-Allow-Headers': headers,
-          },
+          headers: corsHeaders,
         );
       }
 
       final response = await next();
-      response.headers.addAll({
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Methods': methods,
-        'Access-Control-Allow-Headers': headers,
-      });
-      
-      return response;
+      // Create a new Response with merged headers instead of mutating
+      return Response(
+        statusCode: response.statusCode,
+        body: response.body,
+        headers: {...response.headers, ...corsHeaders},
+      );
     };
   }
 }
