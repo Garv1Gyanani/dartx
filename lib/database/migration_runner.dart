@@ -13,22 +13,23 @@ class MigrationRunner {
     await _ensureMigrationsTable();
     
     final applied = await _getAppliedMigrations();
-    int count = 0;
+    final pending = _registry.where((e) => !applied.contains(e.name)).toList();
 
-    for (var entry in _registry) {
-      if (!applied.contains(entry.name)) {
-        Logger.staticInfo('🚀 Migrating: ${entry.name}');
-        await entry.migration.up(_db);
-        await _recordMigration(entry.name);
-        count++;
-      }
-    }
-
-    if (count == 0) {
+    if (pending.isEmpty) {
       Logger.staticInfo('✅ Nothing to migrate.');
-    } else {
-      Logger.staticInfo('✨ Successfully applied $count migration(s).');
+      return;
     }
+
+    // Calculate the next batch number ONCE for the entire run
+    final batch = await _getNextBatchNumber();
+
+    for (var entry in pending) {
+      Logger.staticInfo('🚀 Migrating: ${entry.name}');
+      await entry.migration.up(_db);
+      await _recordMigration(entry.name, batch);
+    }
+
+    Logger.staticInfo('✨ Successfully applied ${pending.length} migration(s) in batch $batch.');
   }
 
   Future<void> rollback() async {
@@ -71,9 +72,12 @@ class MigrationRunner {
     return res.rows.map((r) => r['name'] as String).toList();
   }
 
-  Future<void> _recordMigration(String name) async {
+  Future<int> _getNextBatchNumber() async {
     final res = await _db.query('SELECT MAX(batch) as max_batch FROM migrations');
-    final batch = (res.rows.first['max_batch'] as int? ?? 0) + 1;
+    return (res.rows.first['max_batch'] as int? ?? 0) + 1;
+  }
+
+  Future<void> _recordMigration(String name, int batch) async {
     await _db.query('INSERT INTO migrations (name, batch) VALUES (@name, @batch)', {
       'name': name,
       'batch': batch
