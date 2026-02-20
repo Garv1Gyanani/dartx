@@ -1,49 +1,83 @@
+abstract class Disposable {
+  Future<void> dispose();
+}
+
 class Container {
   final Container? parent;
-  final Map<Type, dynamic> _singletons = {};
-  final Map<Type, dynamic Function(Container)> _factories = {};
-  final Map<Type, dynamic Function(Container)> _scopedFactories = {};
-  final Map<Type, dynamic> _instances = {}; // For scoped instances in this container
+  final Map<String, dynamic> _singletons = {};
+  final Map<String, dynamic Function(Container)> _factories = {};
+  final Map<String, dynamic Function(Container)> _scopedFactories = {};
+  final Map<String, dynamic> _instances = {}; // For scoped instances in this container
 
   Container({this.parent});
 
-  void instance<T>(T instance) => _instances[T] = instance;
+  String _key<T>([String? name]) => "${T.toString()}${name != null ? ':$name' : ''}";
 
-  // Alias for instance() to match requested enterprise naming
-  void registerInstance<T>(T instance) => _instances[T] = instance;
+  void instance<T>(T instance, {String? name}) => _instances[_key<T>(name)] = instance;
+  void registerInstance<T>(T instance, {String? name}) => _instances[_key<T>(name)] = instance;
 
-  void singleton<T>(T instance) => _singletons[T] = instance;
-  void factory<T>(T Function(Container) factory) => _factories[T] = factory;
-  void scoped<T>(T Function(Container) factory) => _scopedFactories[T] = factory;
+  void singleton<T>(T instance, {String? name}) => _singletons[_key<T>(name)] = instance;
+  
+  void lazySingleton<T>(T Function(Container) factory, {String? name}) {
+    _factories[_key<T>(name)] = (c) {
+      final instance = factory(c);
+      _singletons[_key<T>(name)] = instance;
+      return instance;
+    };
+  }
 
-  /// Creates a child container for a specific scope (e.g. a request).
+  void factory<T>(T Function(Container) factory, {String? name}) => 
+    _factories[_key<T>(name)] = factory;
+
+  void scoped<T>(T Function(Container) factory, {String? name}) => 
+    _scopedFactories[_key<T>(name)] = factory;
+
   Container child() => Container(parent: this);
 
-  T resolve<T>() {
-    // 1. If we have a cached instance (singleton or already resolved scoped), return it.
-    if (_instances.containsKey(T)) return _instances[T] as T;
-    if (_singletons.containsKey(T)) return _singletons[T] as T;
+  bool has<T>({String? name}) {
+    final key = _key<T>(name);
+    return _instances.containsKey(key) || 
+           _singletons.containsKey(key) || 
+           _scopedFactories.containsKey(key) || 
+           _factories.containsKey(key) || 
+           (parent?.has<T>(name: name) ?? false);
+  }
 
-    // 2. Check local scoped factories (these are stored in the current container's _instances).
-    if (_scopedFactories.containsKey(T)) {
-      final instance = _scopedFactories[T]!(this);
-      _instances[T] = instance;
+  T resolve<T>({String? name}) {
+    final key = _key<T>(name);
+
+    if (_instances.containsKey(key)) return _instances[key] as T;
+    if (_singletons.containsKey(key)) return _singletons[key] as T;
+
+    if (_scopedFactories.containsKey(key)) {
+      final instance = _scopedFactories[key]!(this);
+      _instances[key] = instance;
       return instance as T;
     }
 
-    // 3. Check local factories.
-    if (_factories.containsKey(T)) {
-      return _factories[T]!(this) as T;
+    if (_factories.containsKey(key)) {
+      return _factories[key]!(this) as T;
     }
 
-    // 4. Delegate to parent if available.
     if (parent != null) {
-      return parent!.resolve<T>();
+      return parent!.resolve<T>(name: name);
     }
 
-    throw Exception('Service $T not registered in this container or any of its parents.');
+    throw Exception('Service $key not registered in this container or any of its parents.');
+  }
+
+  Future<void> dispose() async {
+    for (var instance in _instances.values.toList()) {
+      if (instance is Disposable) {
+        try {
+          await instance.dispose();
+        } catch (e) {
+          // In a framework, we should probably log this but not let it crash the request loop
+        }
+      }
+    }
+    _instances.clear();
   }
 }
 
-// Global root container
 final di = Container();
