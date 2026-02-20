@@ -20,6 +20,9 @@ DartX is a batteries-included backend framework inspired by **Laravel**, **Sprin
 | 📝 **Logging** | Structured Logger | Request correlation IDs, TTY-aware colors, pluggable drivers |
 | 🔐 **Auth** | JWT Support | Token generation and verification |
 | 🛠 **CLI** | Code Generator | Scaffold apps, controllers, services, middleware, requests, migrations |
+| ♻ **Lifecycle**| Resource Disposal | Deterministic `Disposable` hook and async cleanup for request-scoped services |
+| 📡 **Kernel** | Hardened Loop | Deterministic response closure and awaited lifecycle phases |
+| 🧬 **Plugin** | Extensible | Native support for CORS, Rate Limiting, and Request Sizing |
 
 ---
 
