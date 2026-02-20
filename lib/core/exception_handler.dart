@@ -23,7 +23,7 @@ class DefaultExceptionHandler implements ExceptionHandler {
     }
 
     // Handle unknown exceptions
-    logger.error('Unhandled System Error: $error', error: error);
+    logger.error('Unhandled System Error at [${ctx.request.method} ${ctx.request.uri.path}]: $error', error: error);
 
     final message = isDev ? error.toString() : 'Internal Server Error';
     final stack = isDev && error is Error ? error.stackTrace?.toString() : null;
