@@ -118,6 +118,9 @@ class Validator {
       case 'url': return 'The $field format is invalid.';
       case 'string': return 'The $field must be a string.';
       case 'array': return 'The $field must be an array.';
+      case 'alpha': return 'The $field may only contain letters.';
+      case 'alpha_num': return 'The $field may only contain letters and numbers.';
+      case 'regex': return 'The $field format is invalid.';
       default: return 'The $field field is invalid.';
     }
   }
