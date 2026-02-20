@@ -1,6 +1,7 @@
 import 'package:postgres/postgres.dart';
 import 'adapter.dart';
 import 'query_builder.dart';
+import '../di/container.dart';
 
 class PostgresQueryResult implements QueryResult {
   @override
@@ -11,7 +12,7 @@ class PostgresQueryResult implements QueryResult {
   PostgresQueryResult(this.rows, [this.affectedRows]);
 }
 
-class PostgresAdapter implements DatabaseAdapter {
+class PostgresAdapter implements DatabaseAdapter, Disposable {
   final Pool _pool;
 
   PostgresAdapter({
@@ -74,6 +75,9 @@ class PostgresAdapter implements DatabaseAdapter {
   Future<void> close() async {
     await _pool.close();
   }
+
+  @override
+  Future<void> dispose() async => await close();
 }
 
 class PostgresExecutor implements DatabaseExecutor {
