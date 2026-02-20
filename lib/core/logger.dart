@@ -71,7 +71,7 @@ class Logger {
   Logger([this._context]);
 
   static Logger withContext(Context ctx) {
-    return Logger({'requestId': ctx.hashCode.toString()});
+    return Logger({'requestId': ctx.requestId});
   }
 
   void info(String message, [Map<String, dynamic>? data]) => _log(LogLevel.info, message, data);
@@ -80,13 +80,18 @@ class Logger {
   void error(String message, {Object? error, StackTrace? stackTrace, Map<String, dynamic>? data}) {
     final combinedData = data ?? {};
     if (error != null) combinedData['error'] = error.toString();
-    if (stackTrace != null) combinedData['stackTrace'] = stackTrace.toString();
+    if (stackTrace != null) combinedData['stack'] = stackTrace.toString();
     _log(LogLevel.error, message, combinedData);
   }
 
-  static void staticInfo(String message, [Map<String, dynamic>? data]) => Logger().info(message, data);
+  static void staticInfo(String message, [Map<String, dynamic>? data]) => 
+      Logger()._log(LogLevel.info, message, data);
   static void staticError(String message, {Object? error, StackTrace? stackTrace, Map<String, dynamic>? data}) => 
       Logger().error(message, error: error, stackTrace: stackTrace, data: data);
+  static void staticWarn(String message, [Map<String, dynamic>? data]) => 
+      Logger()._log(LogLevel.warn, message, data);
+  static void staticDebug(String message, [Map<String, dynamic>? data]) => 
+      Logger()._log(LogLevel.debug, message, data);
 
   void _log(LogLevel lvl, String message, [Map<String, dynamic>? data]) {
     if (lvl.index < level.index) return;
