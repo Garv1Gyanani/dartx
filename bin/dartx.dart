@@ -43,7 +43,7 @@ void main(List<String> args) {
       _generateMigration(results.command!.rest);
       break;
     case 'make:model':
-      _generateComponent(results.command!.rest, 'model', 'app/models', (name) => Templates.controller(name)); // Simple fallback for now
+      _generateComponent(results.command!.rest, 'model', 'app/models', Templates.model);
       break;
     case 'migrate':
       _runMigrations(rollback: false);
@@ -244,10 +244,17 @@ void _watch(List<String> args) async {
   await restart();
 
   final watcher = DirectoryWatcher(Directory.current.path);
+  Timer? debounce;
+
   watcher.events.listen((event) {
     if (event.path.endsWith('.dart') || event.path.endsWith('.env')) {
-      print('📝 Change detected: ${event.path}');
-      restart();
+      if (event.path.contains('.dart_tool') || event.path.contains('.git')) return;
+      
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 300), () {
+        print('📝 Change detected: ${event.path}');
+        restart();
+      });
     }
   });
 }
