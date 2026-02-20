@@ -6,12 +6,15 @@ abstract class FormRequest {
   Map<String, String> messages() => {};
 }
 
+typedef RuleHandler = bool Function(dynamic value, String? arg);
+
 class Validator {
-  static final Map<String, bool Function(dynamic value, String? arg)> _ruleHandlers = {
+  /// Registry of validation rules. Can be extended by users.
+  static final Map<String, RuleHandler> ruleHandlers = {
     'required': (val, _) => val != null && val.toString().trim().isNotEmpty,
     'email': (val, _) {
       if (val == null || val.toString().isEmpty) return true; // Let 'required' handle empty
-      return RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+      return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
           .hasMatch(val.toString());
     },
     'min': (val, arg) {
@@ -35,9 +38,34 @@ class Validator {
       return num.tryParse(val.toString()) != null;
     },
     'boolean': (val, _) {
-      if (val == null) return true;
-      return val is bool || val == 'true' || val == 'false' || val == 1 || val == 0;
+       if (val == null) return true;
+      if (val is bool) return true;
+      final s = val.toString().toLowerCase();
+      return s == 'true' || s == 'false' || s == '1' || s == '0';
     },
+    'in': (val, arg) {
+      if (val == null || arg == null) return true;
+      final options = arg.split(',');
+      return options.contains(val.toString());
+    },
+    'not_in': (val, arg) {
+      if (val == null || arg == null) return true;
+      final options = arg.split(',');
+      return !options.contains(val.toString());
+    },
+    'url': (val, _) {
+      if (val == null || val.toString().isEmpty) return true;
+      return Uri.tryParse(val.toString())?.hasAbsolutePath ?? false;
+    },
+    'integer': (val, _) {
+      if (val == null) return true;
+      return int.tryParse(val.toString()) != null;
+    },
+    'string': (val, _) => val is String,
+    'array': (val, _) => val is List,
+    'alpha': (val, _) => val == null || RegExp(r'^[a-zA-Z]+$').hasMatch(val.toString()),
+    'alpha_num': (val, _) => val == null || RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.toString()),
+    'regex': (val, arg) => val == null || arg == null || RegExp(arg).hasMatch(val.toString()),
   };
 
   static Map<String, List<String>> validate(Map<String, dynamic> data, Map<String, String> rules, [Map<String, String>? customMessages]) {
@@ -57,7 +85,7 @@ class Validator {
           arg = parts[1];
         }
 
-        final handler = _ruleHandlers[ruleName];
+        final handler = ruleHandlers[ruleName];
         if (handler != null) {
           if (!handler(value, arg)) {
             final message = _getMessage(field, ruleName, arg, customMessages);
@@ -83,7 +111,13 @@ class Validator {
       case 'min': return 'The $field must be at least $arg.';
       case 'max': return 'The $field may not be greater than $arg.';
       case 'numeric': return 'The $field must be a number.';
+      case 'integer': return 'The $field must be an integer.';
       case 'boolean': return 'The $field field must be true or false.';
+      case 'in': return 'The selected $field is invalid.';
+      case 'not_in': return 'The selected $field is invalid.';
+      case 'url': return 'The $field format is invalid.';
+      case 'string': return 'The $field must be a string.';
+      case 'array': return 'The $field must be an array.';
       default: return 'The $field field is invalid.';
     }
   }
