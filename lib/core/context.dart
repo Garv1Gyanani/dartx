@@ -1,3 +1,4 @@
+import 'dart:math';
 import '../http/request.dart';
 import '../http/response.dart';
 import '../di/container.dart';
@@ -12,12 +13,20 @@ class AbortException implements Exception {
 class Context {
   final Request request;
   final Container container;
+  final String requestId;
   final Stopwatch _stopwatch = Stopwatch()..start();
   Response? _response;
 
-  Context(this.request, {required this.container});
+  Context(this.request, {required this.container}) 
+    : requestId = _generateRequestId();
 
-  T resolve<T>() => container.resolve<T>();
+  static String _generateRequestId() {
+    final rnd = Random();
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    return List.generate(8, (_) => chars[rnd.nextInt(chars.length)]).join();
+  }
+
+  T resolve<T>({String? name}) => container.resolve<T>(name: name);
 
   Map<String, dynamic> validate(FormRequest request) {
     return validateData(request.rules(), request.messages());
@@ -54,7 +63,15 @@ class Context {
     return Response(body: text, statusCode: status);
   }
 
+  Response redirect(String url, {int status = 302}) {
+    return Response.redirect(url, status: status);
+  }
+
   Map<String, dynamic> get params => request.params;
   Map<String, dynamic> get query => request.query;
   Map<String, dynamic> get body => request.body;
+
+  Future<void> dispose() async {
+    await container.dispose();
+  }
 }
