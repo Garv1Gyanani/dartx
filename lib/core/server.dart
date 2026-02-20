@@ -12,15 +12,28 @@ import '../di/container.dart';
 import '../http/request.dart';
 import '../http/response.dart';
 
+/// The main entry point for a DartX application.
+/// 
+/// The [App] class manages the HTTP server lifecycle, routing registration,
+/// and the global middleware pipeline.
 class App {
   final Router _router = Router();
   final Pipeline _pipeline = Pipeline();
   HttpServer? _server;
   bool _isShuttingDown = false;
+  
+  /// The global exception handler used to transform errors into responses.
   ExceptionHandler exceptionHandler = DefaultExceptionHandler();
 
+  /// Provides access to the [Router] instance for manual route manipulation.
   Router get router => _router;
 
+  /// Initializes a new DartX application.
+  /// 
+  /// During initialization, the framework:
+  /// 1. Loads configuration from `.env`.
+  /// 2. Registers the [Router] and [ExceptionHandler] into the global DI container.
+  /// 3. Sets up system health and readiness routes.
   App() {
     Config.load();
     di.singleton(_router);

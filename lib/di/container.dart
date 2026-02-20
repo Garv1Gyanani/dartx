@@ -1,8 +1,19 @@
+/// An interface for services that require explicit cleanup at the end of a lifecycle.
+/// 
+/// Implementing [Disposable] allows a service to perform asynchronous cleanup
+/// (e.g., closing database connections or clearing cache buffers) when the
+/// [Container] is disposed.
 abstract class Disposable {
+  /// Performs cleanup operations.
   Future<void> dispose();
 }
 
+/// A hierarchical Dependency Injection (DI) container.
+/// 
+/// The [Container] supports singletons, factories, and scoped instances.
+/// It can be nested to create isolated scopes (e.g., per-request).
 class Container {
+  /// The parent container to delegate to if a service is not found locally.
   final Container? parent;
   final Map<String, dynamic> _singletons = {};
   final Map<String, dynamic Function(Container)> _factories = {};

@@ -10,9 +10,19 @@ class AbortException implements Exception {
   AbortException(this.response);
 }
 
+/// Encapsulates the state of a single HTTP request and its lifecycle.
+/// 
+/// The [Context] provides access to the [Request] data, a request-scoped
+/// dependency injection [Container], and convenience methods for generating
+/// responses. It also tracks the request's execution time.
 class Context {
+  /// The incoming HTTP request data.
   final Request request;
+  
+  /// The dependency injection container scoped specifically to this request.
   final Container container;
+  
+  /// A unique 8-character identifier for this request, used for log correlation.
   final String requestId;
   final Stopwatch _stopwatch = Stopwatch()..start();
   Response? _response;
