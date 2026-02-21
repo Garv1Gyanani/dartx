@@ -7,7 +7,7 @@ class HttpException implements Exception {
 
   Map<String, dynamic> toJson() => {
         'message': message,
-        if (details != null) 'errors': details, // Renamed to 'errors' for consistency with validation
+        if (details != null) 'errors': details,
       };
 
   @override
@@ -17,6 +17,10 @@ class HttpException implements Exception {
 class ValidationException extends HttpException {
   ValidationException(Map<String, dynamic> errors) 
     : super(422, 'The given data was invalid.', errors);
+}
+
+class BadRequestException extends HttpException {
+  BadRequestException([String message = 'Bad Request']) : super(400, message);
 }
 
 class UnauthorizedException extends HttpException {
@@ -31,10 +35,22 @@ class NotFoundException extends HttpException {
   NotFoundException([String message = 'Resource not found']) : super(404, message);
 }
 
+class MethodNotAllowedException extends HttpException {
+  MethodNotAllowedException([String message = 'Method Not Allowed']) : super(405, message);
+}
+
 class ConflictException extends HttpException {
   ConflictException([String message = 'Conflict detected']) : super(409, message);
 }
 
+class TooManyRequestsException extends HttpException {
+  TooManyRequestsException([String message = 'Too Many Requests']) : super(429, message);
+}
+
 class InternalServerErrorException extends HttpException {
   InternalServerErrorException([String message = 'Internal Server Error']) : super(500, message);
+}
+
+class ServiceUnavailableException extends HttpException {
+  ServiceUnavailableException([String message = 'Service Unavailable']) : super(503, message);
 }

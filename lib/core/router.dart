@@ -1,6 +1,7 @@
 import '../http/response.dart';
 import 'middleware.dart';
 import 'context.dart';
+import 'logger.dart';
 
 typedef Handler = Future<Response> Function(Context ctx);
 
@@ -8,8 +9,10 @@ class RouteData {
   final Handler handler;
   final List<Middleware> middleware;
   final String? name;
+  final String method;
+  final String path;
 
-  RouteData(this.handler, {this.middleware = const [], this.name});
+  RouteData(this.handler, {this.middleware = const [], this.name, required this.method, required this.path});
 }
 
 class RouteNode {
@@ -26,6 +29,7 @@ class RouteNode {
 class Router {
   final RouteNode _root = RouteNode('/');
   final Map<String, String> _namedRoutes = {};
+  final List<RouteData> _allRoutes = [];
   
   // Internal state for building routes
   String _buildingPrefix = '';
@@ -52,6 +56,15 @@ class Router {
       _namedRoutes[name] = fullPath;
     }
 
+    final data = RouteData(
+      handler, 
+      middleware: allMiddleware, 
+      name: name,
+      method: method.toUpperCase(),
+      path: fullPath
+    );
+    _allRoutes.add(data);
+
     List<String> segments = fullPath.split('/').where((s) => s.isNotEmpty).toList();
     RouteNode current = _root;
 
@@ -69,13 +82,15 @@ class Router {
       }
     }
     
-    // Pre-calculate the compiled handler for performance
-    current.handlers[method.toUpperCase()] = RouteData(
-      handler, 
-      middleware: allMiddleware, 
-      name: name
-    );
+    current.handlers[method.toUpperCase()] = data;
   }
+
+  // Shorthands
+  void get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('GET', path, handler, middleware: middleware, name: name);
+  void post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('POST', path, handler, middleware: middleware, name: name);
+  void put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('PUT', path, handler, middleware: middleware, name: name);
+  void delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('DELETE', path, handler, middleware: middleware, name: name);
+  void patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('PATCH', path, handler, middleware: middleware, name: name);
 
   String? url(String name, {Map<String, dynamic> params = const {}}) {
     String? path = _namedRoutes[name];
@@ -92,7 +107,8 @@ class Router {
     Map<String, String> params = {};
     RouteNode current = _root;
 
-    for (String segment in segments) {
+    for (int i = 0; i < segments.length; i++) {
+      String segment = segments[i];
       if (current.children.containsKey(segment)) {
         current = current.children[segment]!;
       } else if (current.dynamicChild != null) {
@@ -100,6 +116,8 @@ class Router {
         params[current.paramName!] = segment;
       } else if (current.wildcardChild != null) {
         current = current.wildcardChild!;
+        // Capture trailing path for wildcard
+        params['*'] = segments.sublist(i).join('/');
         break;
       } else {
         return (null, {});
@@ -108,5 +126,13 @@ class Router {
 
     RouteData? data = current.handlers[method.toUpperCase()];
     return (data, params);
+  }
+
+  void printRoutes() {
+    Logger.staticInfo('--- Registered Routes ---');
+    for (var r in _allRoutes) {
+      Logger.staticInfo('${r.method.padRight(7)} ${r.path} ${r.name != null ? "[${r.name}]" : ""}');
+    }
+    Logger.staticInfo('------------------------');
   }
 }

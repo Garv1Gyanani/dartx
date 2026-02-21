@@ -24,11 +24,6 @@ class Pipeline {
       }
     }
 
-    try {
-      return await next();
-    } catch (e, stack) {
-      // Return a 500 by default, can be overridden by a global error handler middleware later
-      rethrow;
-    }
+    return await next();
   }
 }

@@ -50,7 +50,7 @@ void main() async {
     });
 
     // Sub-group with middleware
-    app.group('/admin', middleware: [authMiddleware], callback: (adminRouter) {
+    router.group('/admin', middleware: [authMiddleware], callback: (adminRouter) {
       
       adminRouter.add('GET', '/dashboard/:id', (ctx) async {
         // Resolve scoped service - now truly isolated per request container

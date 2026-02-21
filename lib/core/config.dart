@@ -4,7 +4,7 @@ import 'package:dotenv/dotenv.dart';
 class Config {
   static final DotEnv _env = DotEnv(includePlatformEnvironment: true);
   static bool _isLoaded = false;
-  static final Map<String, dynamic> _config = {};
+  static final Map<String, String> _overrides = {};
 
   static void load() {
     if (_isLoaded) return;
@@ -16,7 +16,8 @@ class Config {
 
   static String? get(String key, [String? defaultValue]) {
     load();
-    // Support dot notation like 'app.name'
+    // Runtime overrides take precedence over .env values
+    if (_overrides.containsKey(key)) return _overrides[key];
     return _env[key] ?? defaultValue;
   }
 
@@ -33,6 +34,6 @@ class Config {
   }
 
   static void set(String key, dynamic value) {
-    _config[key] = value;
+    _overrides[key] = value.toString();
   }
 }

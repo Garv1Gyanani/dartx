@@ -21,10 +21,20 @@ class QueryBuilder {
   }
 
   QueryBuilder where(String column, String operator, dynamic value) {
-    final paramName = 'v${++_paramIndex}';
-    _wheres.add('$column $operator @$paramName');
-    _params[paramName] = value;
+    _addWhere(column, operator, value, 'AND');
     return this;
+  }
+
+  QueryBuilder orWhere(String column, String operator, dynamic value) {
+    _addWhere(column, operator, value, 'OR');
+    return this;
+  }
+
+  void _addWhere(String column, String operator, dynamic value, String conjunction) {
+    final paramName = 'v${++_paramIndex}';
+    final prefix = _wheres.isEmpty ? '' : '$conjunction ';
+    _wheres.add('$prefix$column $operator @$paramName');
+    _params[paramName] = value;
   }
 
   QueryBuilder orderBy(String column, [String direction = 'ASC']) {
@@ -42,22 +52,23 @@ class QueryBuilder {
     return this;
   }
 
-  String _buildSql() {
-    var sql = 'SELECT ${_columns.join(', ')} FROM $_table';
+  String _buildSql({List<String>? overrideColumns}) {
+    final cols = overrideColumns ?? _columns;
+    var sql = 'SELECT ${cols.join(', ')} FROM $_table';
 
     if (_wheres.isNotEmpty) {
-      sql += ' WHERE ${_wheres.join(' AND ')}';
+      sql += ' WHERE ${_wheres.join(' ')}';
     }
 
-    if (_orderBy != null) {
+    if (_orderBy != null && overrideColumns == null) {
       sql += ' ORDER BY $_orderBy';
     }
 
-    if (_limit != null) {
+    if (_limit != null && overrideColumns == null) {
       sql += ' LIMIT $_limit';
     }
 
-    if (_offset != null) {
+    if (_offset != null && overrideColumns == null) {
       sql += ' OFFSET $_offset';
     }
 
@@ -70,16 +81,13 @@ class QueryBuilder {
   }
 
   Future<Map<String, dynamic>?> first() async {
-    limit(1);
-    final results = await get();
-    return results.isNotEmpty ? results.first : null;
+    final results = await _adapter.query('${_buildSql()} LIMIT 1', _params);
+    return results.rows.isNotEmpty ? results.rows.first : null;
   }
 
   Future<int> count() async {
-    final originalColumns = _columns;
-    _columns = ['COUNT(*) as count'];
-    final result = await first();
-    _columns = originalColumns;
+    final results = await _adapter.query(_buildSql(overrideColumns: ['COUNT(*) as count']), _params);
+    final result = results.rows.isNotEmpty ? results.rows.first : null;
     return result != null ? int.parse(result['count'].toString()) : 0;
   }
 
@@ -105,7 +113,7 @@ class QueryBuilder {
 
     var sql = 'UPDATE $_table SET $sets';
     if (_wheres.isNotEmpty) {
-      sql += ' WHERE ${_wheres.join(' AND ')}';
+      sql += ' WHERE ${_wheres.join(' ')}';
     }
     return await _adapter.query(sql, _params);
   }
@@ -113,7 +121,7 @@ class QueryBuilder {
   Future<QueryResult> delete() async {
     var sql = 'DELETE FROM $_table';
     if (_wheres.isNotEmpty) {
-      sql += ' WHERE ${_wheres.join(' AND ')}';
+      sql += ' WHERE ${_wheres.join(' ')}';
     }
     return await _adapter.query(sql, _params);
   }

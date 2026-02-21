@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:args/args.dart';
 import 'package:watcher/watcher.dart';
 import 'templates.dart';
@@ -210,7 +211,7 @@ void main() async {
   tempFile.writeAsStringSync(runnerContent);
 
   print('⏳ Running migrations...');
-  final result = await Process.run('dart', ['run', tempFile.path], mode: ProcessStartMode.inheritStdio);
+  final result = await Process.run('dart', ['run', tempFile.path]);
   
   if (result.exitCode != 0) {
     print('❌ Migration failed.');

@@ -36,13 +36,13 @@ import '../routes/api.dart';
 
 void setupApp(App app) {
   // Global Middleware
-  app.use(LoggerMiddleware);
+  app.use(loggerMiddleware);
 
   // Routes
   setupApiRoutes(app);
 }
 
-Future<Response> LoggerMiddleware(Context ctx, Next next) async {
+Future<Response> loggerMiddleware(Context ctx, Next next) async {
   final response = await next();
   return response;
 }
@@ -115,8 +115,32 @@ class $name extends Migration {
     await db.query('CREATE TABLE ...');
   }
 
+  @override
   Future<void> down(DatabaseAdapter db) async {
     await db.query('DROP TABLE ...');
+  }
+}
+''';
+
+  static String model(String name) => '''
+import 'package:dartx/dartx.dart';
+
+class $name extends Model {
+  String? name;
+
+  @override
+  String get table => '${name.toLowerCase()}s';
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+  };
+
+  @override
+  void fromJson(Map<String, dynamic> json) {
+    id = json['id'] as int?;
+    name = json['name'] as String?;
   }
 }
 ''';

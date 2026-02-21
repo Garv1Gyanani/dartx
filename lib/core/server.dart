@@ -6,7 +6,6 @@ import 'middleware.dart';
 import 'context.dart';
 import 'logger.dart';
 import 'config.dart';
-import 'exceptions.dart';
 import 'exception_handler.dart';
 import '../di/container.dart';
 import '../http/request.dart';

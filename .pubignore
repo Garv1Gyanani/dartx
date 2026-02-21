@@ -1,0 +1,16 @@
+# Exclude website and other non-package files
+dartxwebsite/
+my_blog/
+test_results.txt
+verification_output.txt
+hello.dart
+test_simple.dart
+.env
+.idea/
+.vscode/
+build/
+*.g.dart
+database/run_migrations.dart
+publish_output.txt
+publish_output_utf8.txt
+analyze_output.txt

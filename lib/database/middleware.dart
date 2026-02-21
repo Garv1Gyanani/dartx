@@ -1,6 +1,5 @@
 import '../core/context.dart';
 import '../core/middleware.dart';
-import '../http/response.dart';
 import 'adapter.dart';
 
 Middleware transactionMiddleware() {
