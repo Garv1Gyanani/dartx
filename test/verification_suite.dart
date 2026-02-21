@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 void main() async {
   print('========================================');
-  print('   DARTX CRITICAL BUG VERIFICATION');
+  print('   kronix CRITICAL BUG VERIFICATION');
   print('========================================\n');
 
   await testConfigBug();

@@ -1,12 +1,12 @@
 # Publishing to pub.dev
 
-Before publishing the DartX framework to the official Dart package repository ([pub.dev](https://pub.dev)), the following technical and quality requirements must be met.
+Before publishing the kronix framework to the official Dart package repository ([pub.dev](https://pub.dev)), the following technical and quality requirements must be met.
 
 ## 1. Metadata Verification
 
 Ensure the `pubspec.yaml` contains all necessary metadata for public listing:
 
-- **name**: `dartx` (Verify availability)
+- **name**: `kronix` (Verify availability)
 - **version**: Increment following [Semantic Versioning](https://semver.org/) (e.g., `0.1.0`).
 - **description**: A clear, technical summary of the framework.
 - **homepage**: Link to the GitHub repository.

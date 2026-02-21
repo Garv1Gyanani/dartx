@@ -1,13 +1,13 @@
 class Templates {
   static String pubspec(String name) => '''
 name: $name
-description: A new DartX application.
+description: A new Kronix application.
 version: 1.0.0
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  dartx:
+  kronix:
     path: ../ # This assumes the app is created in a subfolder of the framework for now
   dotenv: ^4.2.0
 
@@ -17,7 +17,7 @@ dev_dependencies:
 ''';
 
   static String main() => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 import '../lib/app.dart';
 
 void main() async {
@@ -31,7 +31,7 @@ void main() async {
 ''';
 
   static String appBoot() => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 import '../routes/api.dart';
 
 void setupApp(App app) {
@@ -49,7 +49,7 @@ Future<Response> loggerMiddleware(Context ctx, Next next) async {
 ''';
 
   static String apiRoutes() => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 import '../app/controllers/user_controller.dart';
 
 void setupApiRoutes(App app) {
@@ -63,7 +63,7 @@ void setupApiRoutes(App app) {
 ''';
 
   static String controller(String name) => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class ${name}Controller {
   Future<Response> index(Context ctx) async {
@@ -79,7 +79,7 @@ class ${name}Service {
 ''';
 
   static String middleware(String name) => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 Future<Response> ${name}Middleware(Context ctx, Next next) async {
   // Logic before
@@ -90,7 +90,7 @@ Future<Response> ${name}Middleware(Context ctx, Next next) async {
 ''';
 
   static String request(String name) => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class ${name}Request extends FormRequest {
   @override
@@ -107,7 +107,7 @@ class ${name}Request extends FormRequest {
 ''';
 
   static String migration(String name) => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class $name extends Migration {
   @override
@@ -123,7 +123,7 @@ class $name extends Migration {
 ''';
 
   static String model(String name) => '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class $name extends Model {
   String? name;
@@ -148,6 +148,6 @@ class $name extends Model {
   static String env() => '''
 PORT=3000
 HOST=0.0.0.0
-APP_NAME=DartXApp
+APP_NAME=KronixApp
 ''';
 }

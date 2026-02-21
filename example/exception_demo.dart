@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class User {
   final int id;

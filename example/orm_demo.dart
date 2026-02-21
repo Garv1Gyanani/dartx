@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 // Mocking the behavior for demo since we don't have a real Postgres running
 class MockDatabaseAdapter implements DatabaseAdapter {

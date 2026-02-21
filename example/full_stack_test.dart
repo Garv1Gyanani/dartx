@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 // 1. SERVICES
 class StatsService {

@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class UserController {
   Future<Response> index(Context ctx) async {

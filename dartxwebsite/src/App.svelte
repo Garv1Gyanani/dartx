@@ -137,14 +137,14 @@
       tabindex="0"
       style="cursor: pointer"
     >
-      <span class="gradient-text">DartX</span>
+      <span class="gradient-text">kronix</span>
     </div>
     <div class="nav-links">
       <a href="#features" class:active={view === 'home'} on:click|preventDefault={goHome}>Features</a>
       <a href="#/docs" class:active={view === 'docs'} on:click|preventDefault={() => window.location.hash = '#/docs'}>Docs</a>
       <a href="#/benchmarks" class:active={view === 'benchmarks'} on:click|preventDefault={() => window.location.hash = '#/benchmarks'}>Benchmarks</a>
       <a href="#/community" class:active={view === 'community'} on:click|preventDefault={() => window.location.hash = '#/community'}>Community</a>
-      <a href="https://github.com/garv/dartx" target="_blank" class="github-link">
+      <a href="https://github.com/garv/kronix" target="_blank" class="github-link">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
       <button class="btn-primary" on:click={() => (window.location.hash = '#/docs')}>Get Started</button>
@@ -182,7 +182,7 @@
             <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
             <span class="file-name">main.dart</span>
         </div>
-        <pre><code><span class="keyword">import</span> <span class="string">'package:dartx/dartx.dart'</span>;
+        <pre><code><span class="keyword">import</span> <span class="string">'package:kronix/kronix.dart'</span>;
 
 <span class="keyword">void</span> <span class="function">main</span>() <span class="keyword">async</span> {'{'}
   <span class="keyword">final</span> app = <span class="class">App</span>();
@@ -230,9 +230,9 @@
                     <span>bash</span>
                 </div>
                 <div class="terminal-body">
-                    <p><span class="prompt">$</span> dart pub global activate dartx</p>
-                    <p><span class="prompt">$</span> dartx create my_api</p>
-                    <p><span class="prompt">$</span> cd my_api && dartx watch</p>
+                    <p><span class="prompt">$</span> dart pub global activate kronix</p>
+                    <p><span class="prompt">$</span> kronix create my_api</p>
+                    <p><span class="prompt">$</span> cd my_api && kronix watch</p>
                     <p class="success">🚀 Server started on http://0.0.0.0:3000</p>
                 </div>
             </div>
@@ -337,7 +337,7 @@
 {#if view === 'benchmarks'}
   <div class="container animate-fade-in" style="padding: 160px 0;">
     <h1 class="section-title">Performance <span class="gradient-text">Analysis</span></h1>
-    <p style="text-align: center; color: var(--text-muted); margin-bottom: 60px; font-size: 18px;">Real-world micro-benchmarks conducted on the DartX core engine.</p>
+    <p style="text-align: center; color: var(--text-muted); margin-bottom: 60px; font-size: 18px;">Real-world micro-benchmarks conducted on the kronix core engine.</p>
     
     <div class="bench-grid">
         <div class="glass bench-card">
@@ -419,7 +419,7 @@
 <footer class="site-footer">
     <div class="container footer-content">
         <div class="footer-brand">
-            <div class="logo"><span class="gradient-text">DartX</span></div>
+            <div class="logo"><span class="gradient-text">kronix</span></div>
             <p>Architect hardened APIs with ease.</p>
         </div>
         <div class="footer-links">
@@ -450,7 +450,7 @@
         </div>
     </div>
     <div class="container footer-bottom">
-        <p>&copy; 2026 DartX Framework. Built with ❤️ for the Dart community.</p>
+        <p>&copy; 2026 kronix Framework. Built with ❤️ for the Dart community.</p>
     </div>
 </footer>
 

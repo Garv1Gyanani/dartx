@@ -69,7 +69,7 @@ function Test-Route {
 }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "   DARTX FRAMEWORK - MEGA TEST SUITE" -ForegroundColor Cyan
+Write-Host "   kronix FRAMEWORK - MEGA TEST SUITE" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 # ═══════════════════════════════════════════
@@ -77,8 +77,8 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 # ═══════════════════════════════════════════
 Write-Host "--- ROUTING ---" -ForegroundColor Yellow
 Test-Route -Name "GET /ping (JSON)" -Method GET -Url "/ping" -ExpectedStatus 200 -ExpectedContains '"pong"'
-Test-Route -Name "GET /text (Plain Text)" -Method GET -Url "/text" -ExpectedStatus 200 -ExpectedContains "Hello DartX"
-Test-Route -Name "GET /html (HTML)" -Method GET -Url "/html" -ExpectedStatus 200 -ExpectedContains "<h1>DartX</h1>"
+Test-Route -Name "GET /text (Plain Text)" -Method GET -Url "/text" -ExpectedStatus 200 -ExpectedContains "Hello kronix"
+Test-Route -Name "GET /html (HTML)" -Method GET -Url "/html" -ExpectedStatus 200 -ExpectedContains "<h1>kronix</h1>"
 Test-Route -Name "GET /users/:id (Named Param)" -Method GET -Url "/users/42" -ExpectedStatus 200 -ExpectedContains "42"
 Test-Route -Name "GET /search?q=dart (Query Params)" -Method GET -Url "/search?q=dart&page=2" -ExpectedStatus 200 -ExpectedContains "dart"
 Test-Route -Name "GET /api/v1/status (Nested Group)" -Method GET -Url "/api/v1/status" -ExpectedStatus 200 -ExpectedContains "v1"
@@ -93,7 +93,7 @@ Write-Host "`n--- VALIDATION ---" -ForegroundColor Yellow
 Test-Route -Name "Login: Missing all fields" -Method POST -Url "/validate/login" -Body '{}' -ExpectedStatus 422 -ExpectedContains "Email is mandatory"
 Test-Route -Name "Login: Bad email" -Method POST -Url "/validate/login" -Body '{"email":"notanemail","password":"short"}' -ExpectedStatus 422 -ExpectedContains "email"
 Test-Route -Name "Login: Short password" -Method POST -Url "/validate/login" -Body '{"email":"g@d.com","password":"abc"}' -ExpectedStatus 422 -ExpectedContains "Password too short"
-Test-Route -Name "Login: Valid" -Method POST -Url "/validate/login" -Body '{"email":"garv@dartx.dev","password":"secret123"}' -ExpectedStatus 200 -ExpectedContains "valid"
+Test-Route -Name "Login: Valid" -Method POST -Url "/validate/login" -Body '{"email":"garv@kronix.dev","password":"secret123"}' -ExpectedStatus 200 -ExpectedContains "valid"
 Test-Route -Name "Product: Missing name" -Method POST -Url "/validate/product" -Body '{"price":10}' -ExpectedStatus 422 -ExpectedContains "required"
 Test-Route -Name "Product: Non-numeric price" -Method POST -Url "/validate/product" -Body '{"name":"Widget","price":"abc"}' -ExpectedStatus 422 -ExpectedContains "must be a number"
 Test-Route -Name "Product: Valid" -Method POST -Url "/validate/product" -Body '{"name":"Widget","price":25,"active":true}' -ExpectedStatus 200 -ExpectedContains "Widget"

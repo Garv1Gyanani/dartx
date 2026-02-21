@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 void main() async {
   print('============================================');
-  print('   DARTX FRAMEWORK - BENCHMARK & VERIFY');
+  print('   kronix FRAMEWORK - BENCHMARK & VERIFY');
   print('============================================\n');
 
   // 1. Verify Fixes
@@ -96,7 +96,7 @@ Future<void> runValidationBenchmark() async {
   final data = {
     'email': 'test@example.com',
     'password': 'password123',
-    'name': 'DartX Tester',
+    'name': 'kronix Tester',
     'age': '25',
   };
   

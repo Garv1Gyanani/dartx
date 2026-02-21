@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 // ─── MOCK DATABASE ──────────────────────────────────────────────
 class TestDB implements DatabaseAdapter {
@@ -12,7 +12,7 @@ class TestDB implements DatabaseAdapter {
     sqlLog.add(sql);
     if (sql.contains('SELECT')) {
       return _MockResult([
-        {'id': 1, 'name': 'Garv', 'email': 'garv@dartx.dev'}
+        {'id': 1, 'name': 'Garv', 'email': 'garv@kronix.dev'}
       ]);
     }
     return _MockResult([], 1);
@@ -115,7 +115,7 @@ void main() async {
     return Response(
       statusCode: response.statusCode,
       body: response.body,
-      headers: {...response.headers, 'X-Powered-By': 'DartX'},
+      headers: {...response.headers, 'X-Powered-By': 'kronix'},
     );
   });
 
@@ -124,9 +124,9 @@ void main() async {
   // ═══════════════════════════════════════════════════════════
   app.get('/ping', (ctx) async => ctx.json({'pong': true}));
 
-  app.get('/text', (ctx) async => ctx.text('Hello DartX'));
+  app.get('/text', (ctx) async => ctx.text('Hello kronix'));
 
-  app.get('/html', (ctx) async => ctx.html('<h1>DartX</h1>'));
+  app.get('/html', (ctx) async => ctx.html('<h1>kronix</h1>'));
 
   app.get('/users/:id', (ctx) async {
     return ctx.json({'userId': ctx.params['id']});
@@ -260,7 +260,7 @@ void main() async {
   // TEST GROUP 7: CONFIG
   // ═══════════════════════════════════════════════════════════
   app.get('/config', (ctx) async {
-    Config.set('CUSTOM_KEY', 'hello_dartx');
+    Config.set('CUSTOM_KEY', 'hello_kronix');
     return ctx.json({
       'env': Config.get('APP_ENV'),
       'custom': Config.get('CUSTOM_KEY'),

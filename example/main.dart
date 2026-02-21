@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 class LoggerMiddleware {
   static Future<Response> handle(Context ctx, Next next) async {
@@ -17,7 +17,7 @@ void main() async {
 
   // Routes
   app.get('/', (ctx) async {
-    return ctx.text('Welcome to DartX Framework! 🚀');
+    return ctx.text('Welcome to kronix Framework! 🚀');
   });
 
   app.get('/hello/:name', (ctx) async {

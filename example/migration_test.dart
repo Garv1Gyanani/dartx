@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 // Reuse mock from orm_demo or define here
 class MockDatabaseAdapter implements DatabaseAdapter {

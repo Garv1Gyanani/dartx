@@ -1,21 +1,21 @@
-# 🚀 DartX Framework Documentation
+# 🚀 kronix Framework Documentation
 
-DartX is a high-performance, enterprise-grade web framework for Dart, designed with a focus on **stability**, **productivity**, and **clean architecture**.
+kronix is a high-performance, enterprise-grade web framework for Dart, designed with a focus on **stability**, **productivity**, and **clean architecture**.
 
 ---
 
 ## 🛠 1. CLI & Scaffolding
-The `dartx` CLI is the heart of the developer experience.
+The `kronix` CLI is the heart of the developer experience.
 
 ### Commands
 | Command | Result |
 | :--- | :--- |
-| `dartx create <app_name>` | Scaffolds a complete project structure. |
-| `dartx watch [file]` | Starts the server with high-performance hot reload. |
-| `dartx make:controller <Name>` | Generates a controller in `app/controllers/`. |
-| `dartx make:request <Name>` | Generates a validation class in `app/requests/`. |
-| `dartx make:migration <Name>` | Generates a timestamped SQL migration. |
-| `dartx migrate` | Executes all pending database migrations. |
+| `kronix create <app_name>` | Scaffolds a complete project structure. |
+| `kronix watch [file]` | Starts the server with high-performance hot reload. |
+| `kronix make:controller <Name>` | Generates a controller in `app/controllers/`. |
+| `kronix make:request <Name>` | Generates a validation class in `app/requests/`. |
+| `kronix make:migration <Name>` | Generates a timestamped SQL migration. |
+| `kronix migrate` | Executes all pending database migrations. |
 
 ---
 
@@ -59,7 +59,7 @@ app.get('/test', (ctx) async {
 ---
 
 ## 🛡 4. Validation & Form Requests
-"The DartX Way" of handling input hygiene.
+"The kronix Way" of handling input hygiene.
 
 ```dart
 // app/requests/register_request.dart

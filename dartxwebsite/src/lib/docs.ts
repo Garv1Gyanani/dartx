@@ -6,10 +6,10 @@ export const docs = [
             {
                 id: 'introduction',
                 title: 'Introduction',
-                content: `DartX is a high-performance, architecturally hardened web framework for the Dart ecosystem. It is designed for developers who require a structured, batteries-included environment for building scalable APIs.
+                content: `kronix is a high-performance, architecturally hardened web framework for the Dart ecosystem. It is designed for developers who require a structured, batteries-included environment for building scalable APIs.
 
 ### Core Philosophy
-DartX draws inspiration from established patterns found in Laravel and NestJS, bringing type-safe dependency injection, fluent database interactions, and a declarative validation system to the Dart backend.
+kronix draws inspiration from established patterns found in Laravel and NestJS, bringing type-safe dependency injection, fluent database interactions, and a declarative validation system to the Dart backend.
 
 ### Key Benefits
 - **Deterministic Lifecycle**: Predictable resource cleanup and socket management.
@@ -20,14 +20,14 @@ DartX draws inspiration from established patterns found in Laravel and NestJS, b
             {
                 id: 'installation',
                 title: 'Installation',
-                content: `To get started with DartX, you need to install the CLI tool globally or run it via the Dart SDK.
+                content: `To get started with kronix, you need to install the CLI tool globally or run it via the Dart SDK.
 
 ### Using the CLI
 The fastest way to start is using the scaffold command:
 
 \`\`\`bash
 # Create a new project
-dart run bin/dartx.dart create my_api
+dart run bin/kronix.dart create my_api
 
 # Navigate into project
 cd my_api
@@ -49,7 +49,7 @@ dart pub get
             {
                 id: 'routing',
                 title: 'Routing & Groups',
-                content: `DartX uses a high-performance Trie-based router. This ensures that route matching remains O(n) relative to path segments, not total route count.
+                content: `kronix uses a high-performance Trie-based router. This ensures that route matching remains O(n) relative to path segments, not total route count.
 
 ### Basic Routing
 \`\`\`dart
@@ -87,7 +87,7 @@ The router is optimized for low latency, with an average match time of **~1.3µs
             {
                 id: 'dependency-injection',
                 title: 'Dependency Injection',
-                content: `The DI system in DartX is hierarchical. There is a global container for singletons and request-specific child containers for scoped services.
+                content: `The DI system in kronix is hierarchical. There is a global container for singletons and request-specific child containers for scoped services.
 
 ### Registration
 \`\`\`dart
@@ -120,7 +120,7 @@ Any service implementing the \`Disposable\` interface will be automatically clea
             {
                 id: 'database-orm',
                 title: 'Query Builder & ORM',
-                content: `DartX features a fluent Query Builder that makes working with PostgreSQL intuitive and type-safe.
+                content: `kronix features a fluent Query Builder that makes working with PostgreSQL intuitive and type-safe.
 
 ### Basic Queries
 \`\`\`dart
@@ -141,12 +141,12 @@ await db.transaction((tx) async {
 \`\`\`
 
 ### Migrations
-The migration system uses a batch-based execution model. Run \`dartx migrate\` to update your schema.`
+The migration system uses a batch-based execution model. Run \`kronix migrate\` to update your schema.`
             },
             {
                 id: 'validation',
                 title: 'Form Request Validation',
-                content: `Validation in DartX is declarative. Instead of manual checks in your controllers, you define \`FormRequest\` classes.
+                content: `Validation in kronix is declarative. Instead of manual checks in your controllers, you define \`FormRequest\` classes.
 
 ### Defining Rules
 \`\`\`dart
@@ -179,7 +179,7 @@ Validation is extremely lightweight, with an overhead of only **~2.7µs** per ob
             {
                 id: 'exception-handling',
                 title: 'Exception Handling',
-                content: `DartX handles errors deterministically through an Exception Transformer.
+                content: `kronix handles errors deterministically through an Exception Transformer.
 
 ### Typed Exceptions
 Throwing a \`NotFoundException\` or \`UnauthorizedException\` will automatically result in the correct HTTP status code and a standardized JSON body.
@@ -190,7 +190,7 @@ In development (\`APP_ENV=local\`), exceptions include full stack traces and deb
             {
                 id: 'middleware-pipelines',
                 title: 'Middleware Pipelines',
-                content: `Middleware in DartX follows the Onion Pattern. Each layer can execute logic before and after the next handler in the stack.
+                content: `Middleware in kronix follows the Onion Pattern. Each layer can execute logic before and after the next handler in the stack.
 
 \`\`\`dart
 class LoggerMiddleware extends Middleware {

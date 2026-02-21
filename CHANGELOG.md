@@ -1,6 +1,6 @@
 # 0.1.0
 
-- Initial release of the DartX framework.
+- Initial release of the Kronix framework.
 - High-performance Radix-Trie router with middleware support.
 - Hierarchical Dependency Injection with request scoping.
 - Declarative FormRequest validation system.

@@ -61,9 +61,9 @@ void main(List<String> args) {
 }
 
 void _printUsage() {
-  print('Usage: dartx <command> [arguments]');
+  print('Usage: kronix <command> [arguments]');
   print('\nCommands:');
-  print('  create <name>       Scaffold a new DartX application');
+  print('  create <name>       Scaffold a new Kronix application');
   print('  make:controller <N> Create a new controller');
   print('  make:service <N>    Create a new service');
   print('  make:middleware <N> Create a new middleware');
@@ -77,7 +77,7 @@ void _printUsage() {
 
 void _createApp(List<String> args) {
   if (args.isEmpty) {
-    print('Error: Please specify app name (e.g., dartx create my_app)');
+    print('Error: Please specify app name (e.g., kronix create my_app)');
     return;
   }
   final name = args[0];
@@ -88,7 +88,7 @@ void _createApp(List<String> args) {
     return;
   }
 
-  print('🚀 Scaffolding new DartX app: $name...');
+  print('🚀 Scaffolding new Kronix app: $name...');
 
   // Create Folders
   _createDir('$name/bin');
@@ -114,7 +114,7 @@ void _createApp(List<String> args) {
   print('\nNext steps:');
   print('  cd $name');
   print('  dart pub get');
-  print('  dartx watch bin/server.dart');
+  print('  kronix watch bin/server.dart');
 }
 
 void _generateMigration(List<String> args) {
@@ -179,14 +179,14 @@ void _runMigrations({bool rollback = false}) async {
   }
 
   final runnerContent = '''
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 ${imports.join('\n')}
 
 void main() async {
   Config.load();
   final db = PostgresAdapter(
     host: Config.get('DB_HOST', 'localhost')!,
-    database: Config.get('DB_NAME', 'dartx')!,
+    database: Config.get('DB_NAME', 'kronix')!,
     username: Config.get('DB_USER', 'postgres'),
     password: Config.get('DB_PASS', 'postgres'),
   );

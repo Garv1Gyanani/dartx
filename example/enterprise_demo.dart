@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 // --- DI Services ---
 class AuthService {
@@ -37,7 +37,7 @@ void main() async {
 
   // 2. Global Logging Configuration
   Logger.level = LogLevel.debug;
-  Config.set('APP_NAME', 'DartX Enterprise Demo');
+  Config.set('APP_NAME', 'kronix Enterprise Demo');
 
   // 3. Routing with Groups & Prefixes
   app.group('/api/v1', callback: (router) {

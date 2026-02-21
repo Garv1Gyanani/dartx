@@ -1,9 +1,9 @@
-name: dartx
+name: kronix
 description: A high-performance, architecturally hardened web framework for Dart.
 version: 0.1.0
-homepage: https://github.com/garv/dartx
-repository: https://github.com/garv/dartx
-issue_tracker: https://github.com/garv/dartx/issues
+homepage: https://github.com/garv/kronix
+repository: https://github.com/garv/kronix
+issue_tracker: https://github.com/garv/kronix/issues
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

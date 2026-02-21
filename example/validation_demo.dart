@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+import 'package:kronix/kronix.dart';
 
 // 1. Define Request Logic
 class LoginRequest extends FormRequest {
@@ -19,7 +19,7 @@ void main() async {
   final app = App();
 
   app.post('/login', (ctx) async {
-    // 2. Validate with "The DartX Way"
+    // 2. Validate with "The kronix Way"
     // This will automatically throw AbortException with a 422 response if it fails.
     final data = ctx.validate(LoginRequest());
     

@@ -11,7 +11,7 @@ import '../di/container.dart';
 import '../http/request.dart';
 import '../http/response.dart';
 
-/// The main entry point for a DartX application.
+/// The main entry point for a kronix application.
 /// 
 /// The [App] class manages the HTTP server lifecycle, routing registration,
 /// and the global middleware pipeline.
@@ -27,7 +27,7 @@ class App {
   /// Provides access to the [Router] instance for manual route manipulation.
   Router get router => _router;
 
-  /// Initializes a new DartX application.
+  /// Initializes a new kronix application.
   /// 
   /// During initialization, the framework:
   /// 1. Loads configuration from `.env`.
