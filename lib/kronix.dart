@@ -29,5 +29,7 @@ export 'testing/fluent_test.dart';
 export 'core/explorer.dart';
 export 'queue/job.dart';
 export 'queue/driver.dart';
+export 'queue/database_driver.dart';
 export 'queue/worker.dart';
 export 'queue/queue.dart';
+export 'queue/metrics.dart';

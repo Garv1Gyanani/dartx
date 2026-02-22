@@ -6,8 +6,8 @@ enum JobStatus { pending, processing, completed, failed }
 /// Base class for all queueable jobs.
 ///
 /// Extend this class and implement [handle] to define the work
-/// your job performs. Override [maxRetries], [retryDelay], and [queue]
-/// to control retry behaviour and queue routing.
+/// your job performs. Override [maxRetries], [retryDelay], [timeout],
+/// and [queue] to control retry behaviour, timeouts, and queue routing.
 ///
 /// ```dart
 /// class SendEmailJob extends Job {
@@ -20,6 +20,9 @@ enum JobStatus { pending, processing, completed, failed }
 ///
 ///   @override
 ///   int get maxRetries => 3;
+///
+///   @override
+///   Duration get timeout => Duration(seconds: 30);
 ///
 ///   @override
 ///   Future<void> handle() async {
@@ -43,6 +46,12 @@ abstract class Job {
   /// Base delay between retries. Actual delay increases exponentially.
   Duration get retryDelay => const Duration(seconds: 2);
 
+  /// Maximum time a single job execution is allowed to run.
+  ///
+  /// If the job exceeds this duration, it will be cancelled and treated
+  /// as a failure (eligible for retry). Set to `null` for no timeout.
+  Duration? get timeout => const Duration(seconds: 60);
+
   /// How many times this job has been attempted so far.
   int attempts = 0;
 
@@ -57,6 +66,9 @@ abstract class Job {
 
   /// When this job was first created.
   late final DateTime createdAt;
+
+  /// When this job finished processing (completed or permanently failed).
+  DateTime? finishedAt;
 
   /// When this job should next be processed (for delayed/retry scheduling).
   DateTime? availableAt;
@@ -104,6 +116,7 @@ abstract class Job {
         'attempts': attempts,
         'maxRetries': maxRetries,
         'createdAt': createdAt.toIso8601String(),
+        'finishedAt': finishedAt?.toIso8601String(),
         'availableAt': availableAt?.toIso8601String(),
         'lastError': lastError?.toString(),
       };

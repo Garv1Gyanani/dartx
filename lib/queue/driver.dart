@@ -10,7 +10,10 @@ abstract class QueueDriver {
   /// Pushes a [job] onto the specified [queue].
   Future<void> push(Job job, [String queue = 'default']);
 
-  /// Pops the next available job from the [queue].
+  /// Pops the next available job from the [queue] atomically.
+  ///
+  /// Implementations MUST guarantee that no two workers can receive
+  /// the same job (distributed lock / atomic dequeue).
   /// Returns `null` if the queue is empty or no jobs are available.
   Future<Job?> pop([String queue = 'default']);
 
@@ -23,11 +26,20 @@ abstract class QueueDriver {
   /// Returns a [job] to the queue for retry, respecting its [availableAt].
   Future<void> release(Job job);
 
-  /// Permanently removes a failed [job] (moves to dead-letter if applicable).
+  /// Permanently removes a failed [job] and stores it in the dead letter queue.
   Future<void> fail(Job job);
+
+  /// Returns all permanently failed jobs (dead letter queue).
+  Future<List<Map<String, dynamic>>> deadLetterJobs();
+
+  /// Retries a dead-letter job by its [jobId], moving it back to the queue.
+  Future<bool> retryDeadLetter(String jobId);
 
   /// Clears all jobs from the [queue]. Primarily for testing.
   Future<void> clear([String queue = 'default']);
+
+  /// Clears the dead letter queue.
+  Future<void> clearDeadLetters();
 }
 
 /// An in-memory [QueueDriver] for development and testing.
@@ -68,6 +80,7 @@ class MemoryQueueDriver implements QueueDriver {
   @override
   Future<void> complete(Job job) async {
     job.status = JobStatus.completed;
+    job.finishedAt = DateTime.now();
     _completed.add(job);
   }
 
@@ -80,12 +93,39 @@ class MemoryQueueDriver implements QueueDriver {
   @override
   Future<void> fail(Job job) async {
     job.status = JobStatus.failed;
+    job.finishedAt = DateTime.now();
     _failed.add(job);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> deadLetterJobs() async {
+    return _failed.map((j) => j.toJson()).toList();
+  }
+
+  @override
+  Future<bool> retryDeadLetter(String jobId) async {
+    final idx = _failed.indexWhere((j) => j.id == jobId);
+    if (idx == -1) return false;
+
+    final job = _failed.removeAt(idx);
+    job.status = JobStatus.pending;
+    job.attempts = 0;
+    job.lastError = null;
+    job.lastStackTrace = null;
+    job.availableAt = null;
+    job.finishedAt = null;
+    _queue(job.queue).add(job);
+    return true;
   }
 
   @override
   Future<void> clear([String queue = 'default']) async {
     _queue(queue).clear();
+  }
+
+  @override
+  Future<void> clearDeadLetters() async {
+    _failed.clear();
   }
 
   /// Returns completed jobs (for testing/inspection).
