@@ -52,26 +52,41 @@ class App {
     get('/ready', (ctx) async => ctx.json({'status': _isShuttingDown ? 'down' : 'ok'}));
   }
 
+  /// Registers a global [middleware] to be executed for every request.
   void use(Middleware middleware) {
     _pipeline.use(middleware);
   }
 
+  /// Groups routes under a common [prefix] with optional [middleware].
   void group(String prefix, {List<Middleware> middleware = const [], required void Function(Router) callback}) {
     _router.group(prefix, middleware: middleware, callback: callback);
   }
 
+  /// Registers a GET route.
   void get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('GET', path, handler, middleware: middleware, name: name);
+
+  /// Registers a POST route.
   void post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('POST', path, handler, middleware: middleware, name: name);
+
+  /// Registers a PUT route.
   void put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('PUT', path, handler, middleware: middleware, name: name);
+
+  /// Registers a DELETE route.
   void delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('DELETE', path, handler, middleware: middleware, name: name);
+
+  /// Registers a PATCH route.
   void patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('PATCH', path, handler, middleware: middleware, name: name);
+
+  /// Registers a HEAD route.
   void head(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('HEAD', path, handler, middleware: middleware, name: name);
+
+  /// Registers an OPTIONS route.
   void options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('OPTIONS', path, handler, middleware: middleware, name: name);
 
