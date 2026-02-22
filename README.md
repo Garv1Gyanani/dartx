@@ -15,6 +15,20 @@ The framework draws inspiration from established patterns found in Laravel and N
 
 ---
 
+## 📚 Documentation
+
+Explore the detailed guides for each Kronix module:
+
+- [**Routing & Handlers**](docs/routing.md) - Radix-Trie router, parameters, and groups.
+- [**Middleware Pipeline**](docs/middleware.md) - Filtering requests and built-in plugins.
+- [**Dependency Injection**](docs/dependency-injection.md) - Lifecycles, scoping, and the IoC container.
+- [**Validation**](docs/validation.md) - Declarative FormRequests and rule registry.
+- [**Database & ORM**](docs/database.md) - Query builder, migrations, and PostgreSQL.
+- [**WebSockets**](docs/websockets.md) - Real-time communication, rooms, and hub.
+- [**CLI Commands**](docs/cli.md) - Scaffolding and developer workflow.
+
+---
+
 ## Technical Features
 
 ### Routing and Middleware

@@ -1,5 +1,6 @@
 import 'adapter.dart';
 
+/// A fluent SQL query builder for constructing and executing database queries.
 class QueryBuilder {
   final String _table;
   final DatabaseAdapter _adapter;
@@ -13,18 +14,22 @@ class QueryBuilder {
   int? _limit;
   int? _offset;
 
+  /// Creates a new [QueryBuilder] for the given [table] name.
   QueryBuilder(this._table, this._adapter);
 
+  /// Specifies the [columns] to be selected. Defaults to `['*']`.
   QueryBuilder select(List<String> columns) {
     _columns = columns;
     return this;
   }
 
+  /// Adds a `WHERE` clause with an `AND` conjunction.
   QueryBuilder where(String column, String operator, dynamic value) {
     _addWhere(column, operator, value, 'AND');
     return this;
   }
 
+  /// Adds a `WHERE` clause with an `OR` conjunction.
   QueryBuilder orWhere(String column, String operator, dynamic value) {
     _addWhere(column, operator, value, 'OR');
     return this;
@@ -37,16 +42,19 @@ class QueryBuilder {
     _params[paramName] = value;
   }
 
+  /// Adds an `ORDER BY` clause for [column] and [direction].
   QueryBuilder orderBy(String column, [String direction = 'ASC']) {
     _orderBy = '$column ${direction.toUpperCase()}';
     return this;
   }
 
+  /// Adds a `LIMIT` clause.
   QueryBuilder limit(int value) {
     _limit = value;
     return this;
   }
 
+  /// Adds an `OFFSET` clause.
   QueryBuilder offset(int value) {
     _offset = value;
     return this;
@@ -75,23 +83,26 @@ class QueryBuilder {
     return sql;
   }
 
+  /// Executes a `SELECT` query and returns the matching rows.
   Future<List<Map<String, dynamic>>> get() async {
     final result = await _adapter.query(_buildSql(), _params);
     return result.rows;
   }
 
+  /// Executes a `SELECT` query and returns only the first matching row.
   Future<Map<String, dynamic>?> first() async {
     final results = await _adapter.query('${_buildSql()} LIMIT 1', _params);
     return results.rows.isNotEmpty ? results.rows.first : null;
   }
 
+  /// Executes a `COUNT` query and returns the total number of matching rows.
   Future<int> count() async {
     final results = await _adapter.query(_buildSql(overrideColumns: ['COUNT(*) as count']), _params);
     final result = results.rows.isNotEmpty ? results.rows.first : null;
     return result != null ? int.parse(result['count'].toString()) : 0;
   }
 
-  // Insert, Update, Delete
+  /// Executes an `INSERT` statement with the provided [data].
   Future<QueryResult> insert(Map<String, dynamic> data) async {
     final columns = data.keys.join(', ');
     final values = data.keys.map((k) {
@@ -104,6 +115,7 @@ class QueryBuilder {
     return await _adapter.query(sql, _params);
   }
 
+  /// Executes an `UPDATE` statement with the provided [data].
   Future<QueryResult> update(Map<String, dynamic> data) async {
     final sets = data.keys.map((k) {
       final paramName = 'u${++_paramIndex}';
@@ -118,6 +130,7 @@ class QueryBuilder {
     return await _adapter.query(sql, _params);
   }
 
+  /// Executes a `DELETE` statement.
   Future<QueryResult> delete() async {
     var sql = 'DELETE FROM $_table';
     if (_wheres.isNotEmpty) {

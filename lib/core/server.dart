@@ -11,6 +11,8 @@ import '../di/container.dart';
 import '../http/request.dart';
 import '../http/response.dart';
 
+import 'websocket.dart';
+
 /// The main entry point for a kronix application.
 /// 
 /// The [App] class manages the HTTP server lifecycle, routing registration,
@@ -18,6 +20,7 @@ import '../http/response.dart';
 class App {
   final Router _router = Router();
   final Pipeline _pipeline = Pipeline();
+  final WebSocketHub _wsHub = WebSocketHub();
   HttpServer? _server;
   bool _isShuttingDown = false;
   
@@ -27,16 +30,20 @@ class App {
   /// Provides access to the [Router] instance for manual route manipulation.
   Router get router => _router;
 
+  /// Provides access to the global [WebSocketHub].
+  WebSocketHub get wsHub => _wsHub;
+
   /// Initializes a new kronix application.
   /// 
   /// During initialization, the framework:
   /// 1. Loads configuration from `.env`.
-  /// 2. Registers the [Router] and [ExceptionHandler] into the global DI container.
+  /// 2. Registers the [Router], [ExceptionHandler], and [WebSocketHub] into the global DI container.
   /// 3. Sets up system health and readiness routes.
   App() {
     Config.load();
     di.singleton(_router);
     di.singleton<ExceptionHandler>(exceptionHandler);
+    di.singleton(_wsHub);
     _setupDefaultRoutes();
   }
 
@@ -68,6 +75,11 @@ class App {
   void options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('OPTIONS', path, handler, middleware: middleware, name: name);
 
+  /// Registers a WebSocket endpoint at the specified [path].
+  void ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) => 
+    _router.ws(path, handler, middleware: middleware, name: name);
+
+  /// Starts the HTTP/WebSocket server and listens for incoming requests.
   Future<void> listen({int? port, String? host}) async {
     final serverPort = port ?? Config.getInt('PORT', 3000)!;
     final serverHost = host ?? Config.get('HOST', '0.0.0.0')!;
@@ -100,9 +112,15 @@ class App {
   }
 
   Future<void> _handleRequest(HttpRequest rawRequest) async {
-    final (routeData, params) = _router.match(rawRequest.method, rawRequest.uri);
+    final isWebSocket = WebSocketTransformer.isUpgradeRequest(rawRequest);
+    final (routeData, params) = _router.match(isWebSocket ? 'WS' : rawRequest.method, rawRequest.uri);
 
     if (routeData == null) {
+      if (isWebSocket) {
+         rawRequest.response.statusCode = 404;
+         await rawRequest.response.close();
+         return;
+      }
       rawRequest.response.statusCode = 404;
       rawRequest.response.headers.contentType = ContentType.json;
       rawRequest.response.write(jsonEncode({'message': 'Not Found'}));
@@ -110,9 +128,9 @@ class App {
       return;
     }
 
-    // Parse body
+    // Parse body for non-WS requests
     Map<String, dynamic> body = {};
-    if (rawRequest.contentLength > 0) {
+    if (!isWebSocket && rawRequest.contentLength > 0) {
       final contentType = rawRequest.headers.contentType?.mimeType;
       try {
         final content = await utf8.decodeStream(rawRequest);
@@ -146,16 +164,26 @@ class App {
     final logger = Logger.withContext(ctx);
     
     try {
+      if (isWebSocket && routeData.isWebSocket) {
+        await _handleWebSocket(ctx, routeData);
+        return;
+      }
+
       final response = await _pipeline.exec(ctx, (lvlCtx) async {
         final routePipeline = Pipeline();
         for (var m in routeData.middleware) {
           routePipeline.use(m);
         }
-        return await routePipeline.exec(lvlCtx, routeData.handler);
+        return await routePipeline.exec(lvlCtx, routeData.handler!);
       });
       
       await _sendResponse(rawRequest, ctx, response, logger);
     } catch (e) {
+       if (isWebSocket) {
+          logger.error('WebSocket Error: $e', error: e);
+          await rawRequest.response.close();
+          return;
+       }
       final response = exceptionHandler.render(ctx, e);
       try {
         await _sendResponse(rawRequest, ctx, response, logger);
@@ -164,6 +192,42 @@ class App {
       }
     } finally {
       await ctx.dispose(); // Deterministic tail phase cleanup
+    }
+  }
+
+  Future<void> _handleWebSocket(Context ctx, RouteData routeData) async {
+    // Run global middleware, then route middleware, then the upgrade
+    try {
+      // NOTE: Traditional middleware might not work as expected with WebSocket upgrades 
+      // because they expect to return a Response object. 
+      // For now, we allow them to run, and if any aborts/returns a response, we stop.
+      
+      final result = await _pipeline.exec(ctx, (lvlCtx) async {
+        final routePipeline = Pipeline();
+        for (var m in routeData.middleware) {
+          routePipeline.use(m);
+        }
+        
+        // We need a dummy handler to return a "null" response or similar if we reach the end
+        return await routePipeline.exec(lvlCtx, (c) async => Response(statusCode: 101));
+      });
+
+      if (result.statusCode != 101) {
+        // One of the middlewares returned a response (e.g. Auth failure)
+        await _sendResponse(ctx.request.rawRequest, ctx, result, Logger.withContext(ctx));
+        return;
+      }
+
+      final socket = await WebSocketTransformer.upgrade(ctx.request.rawRequest);
+      final connection = WebSocketConnection(socket, ctx);
+      
+      // Register in global hub for broadcasting
+      _wsHub.register(connection);
+      
+      await routeData.wsHandler!(connection);
+    } catch (e) {
+      Logger.withContext(ctx).error('WebSocket upgrade failed: $e', error: e);
+      await ctx.request.rawRequest.response.close();
     }
   }
 

@@ -20,15 +20,21 @@ class Container {
   final Map<String, dynamic Function(Container)> _scopedFactories = {};
   final Map<String, dynamic> _instances = {}; // For scoped instances in this container
 
+  /// Creates a new [Container], optionally delegating to a [parent].
   Container({this.parent});
 
   String _key<T>([String? name]) => "${T.toString()}${name != null ? ':$name' : ''}";
 
+  /// Registers an [instance] locally in this container.
   void instance<T>(T instance, {String? name}) => _instances[_key<T>(name)] = instance;
+
+  /// Registers an [instance] locally in this container. Alias for [instance].
   void registerInstance<T>(T instance, {String? name}) => _instances[_key<T>(name)] = instance;
 
+  /// Registers a [instance] as a singleton available globally (or at this container's level).
   void singleton<T>(T instance, {String? name}) => _singletons[_key<T>(name)] = instance;
   
+  /// Registers a [factory] that will be executed once and its result stored as a singleton.
   void lazySingleton<T>(T Function(Container) factory, {String? name}) {
     _factories[_key<T>(name)] = (c) {
       final instance = factory(c);
@@ -37,14 +43,18 @@ class Container {
     };
   }
 
+  /// Registers a [factory] that will be executed every time [resolve] is called.
   void factory<T>(T Function(Container) factory, {String? name}) => 
     _factories[_key<T>(name)] = factory;
 
+  /// Registers a [factory] that will be executed once per container scope (e.g. per request).
   void scoped<T>(T Function(Container) factory, {String? name}) => 
     _scopedFactories[_key<T>(name)] = factory;
 
+  /// Creates a child container that delegates to this one for missing services.
   Container child() => Container(parent: this);
 
+  /// Returns `true` if a service of type [T] is registered.
   bool has<T>({String? name}) {
     final key = _key<T>(name);
     return _instances.containsKey(key) || 
@@ -54,6 +64,10 @@ class Container {
            (parent?.has<T>(name: name) ?? false);
   }
 
+  /// Resolves an instance of type [T].
+  /// 
+  /// Searches local instances, then singletons, then factories. If not found, 
+  /// delegates to the [parent] container. Throws if not found anywhere.
   T resolve<T>({String? name}) {
     final key = _key<T>(name);
 
@@ -67,7 +81,8 @@ class Container {
     }
 
     if (_factories.containsKey(key)) {
-      return _factories[key]!(this) as T;
+      final instance = _factories[key]!(this);
+      return instance as T;
     }
 
     if (parent != null) {
@@ -77,6 +92,7 @@ class Container {
     throw Exception('Service $key not registered in this container or any of its parents.');
   }
 
+  /// Disposes of all locally registered instances that implement [Disposable].
   Future<void> dispose() async {
     for (var instance in _instances.values.toList()) {
       if (instance is Disposable) {
@@ -91,4 +107,5 @@ class Container {
   }
 }
 
+/// The global Default Injection [Container].
 final di = Container();

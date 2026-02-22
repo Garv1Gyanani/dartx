@@ -1,21 +1,30 @@
 import 'dart:convert';
 
+/// Represents an outgoing HTTP response from the Kronix framework.
 class Response {
+  /// The HTTP status code of the response (e.g., 200, 404, 500).
   final int statusCode;
+
+  /// The payload of the response, usually a String or null.
   final dynamic body;
+
+  /// The HTTP headers to be sent with the response.
   final Map<String, String> headers;
 
+  /// Constructs a new [Response] with an optional body and headers.
   Response({
     this.statusCode = 200,
     this.body,
     Map<String, String>? headers,
   }) : headers = headers ?? {'Content-Type': 'text/plain'};
 
+  /// Creates a JSON response with the provided [data] and status code.
   Response.json(dynamic data, {int status = 200})
       : statusCode = status,
         body = jsonEncode(data),
         headers = {'Content-Type': 'application/json'};
 
+  /// Creates an HTML response with the provided [html] string and status code.
   Response.html(String html, {int status = 200})
       : statusCode = status,
         body = html,

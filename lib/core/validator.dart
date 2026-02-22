@@ -1,14 +1,23 @@
 
-
+/// Interface for classes that define validation rules and messages.
+/// 
+/// Extend this class to create specific request validation logic for your
+/// controllers.
 abstract class FormRequest {
+  /// Returns a map of field names to validation rule strings (e.g., 'required|email').
   Map<String, String> rules();
+
+  /// Returns a map of attribute.rule keys to custom error messages.
   Map<String, String> messages() => {};
 }
 
+/// A function that validates a value against an optional argument.
 typedef RuleHandler = bool Function(dynamic value, String? arg);
 
+/// The core validation engine for the Kronix framework.
 class Validator {
-  /// Registry of validation rules. Can be extended by users.
+  /// Registry of validation rules. Can be extended by users to add custom rules.
+  /// Registry of validation rules. Can be extended by users to add custom rules.
   static final Map<String, RuleHandler> ruleHandlers = {
     'required': (val, _) => val != null && val.toString().trim().isNotEmpty,
     'email': (val, _) {
@@ -67,6 +76,10 @@ class Validator {
     'regex': (val, arg) => val == null || arg == null || RegExp(arg).hasMatch(val.toString()),
   };
 
+  /// Validates the [data] against the provided [rules].
+  /// 
+  /// Returns a map of field names to a list of error strings. If the map is 
+  /// empty, validation passed.
   static Map<String, List<String>> validate(Map<String, dynamic> data, Map<String, String> rules, [Map<String, String>? customMessages]) {
     final Map<String, List<String>> errors = {};
 
@@ -74,8 +87,8 @@ class Validator {
       final fieldRules = ruleString.split('|');
       final value = data[field];
 
-      for (var rule in fieldRules) {
-        String ruleName = rule;
+      for (final rule in fieldRules) {
+        var ruleName = rule;
         String? arg;
 
         if (rule.contains(':')) {

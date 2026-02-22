@@ -22,3 +22,4 @@ export 'database/query_builder.dart';
 export 'database/middleware.dart';
 export 'database/migration.dart';
 export 'database/migration_runner.dart';
+export 'core/websocket.dart';

@@ -1,9 +1,20 @@
 import 'dart:io';
 
+/// Represents an incoming HTTP request within the Kronix framework.
+/// 
+/// This class wraps the native [HttpRequest] and provides parsed access to
+/// path parameters, query strings, and decoded request bodies.
 class Request {
+  /// The underlying native Dart HTTP request.
   final HttpRequest rawRequest;
+
+  /// Path parameters extracted by the router (e.g., /users/:id).
   final Map<String, dynamic> params;
+
+  /// Query string parameters (e.g., ?page=1).
   final Map<String, dynamic> query;
+
+  /// The decoded request body, typically from JSON or Form-UrlEncoded data.
   final Map<String, dynamic> body;
 
   /// Extra storage for middleware to attach data without polluting body.

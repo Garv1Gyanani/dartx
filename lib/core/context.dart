@@ -4,6 +4,7 @@ import '../http/response.dart';
 import '../di/container.dart';
 import 'validator.dart';
 import 'exceptions.dart';
+import 'websocket.dart';
 
 class AbortException implements Exception {
   final Response response;
@@ -81,6 +82,10 @@ class Context {
   Map<String, dynamic> get query => request.query;
   Map<String, dynamic> get body => request.body;
 
+  /// Retrieves the global [WebSocketHub] from the [Container].
+  WebSocketHub get wsHub => resolve<WebSocketHub>();
+
+  /// Disposes of the request-scoped [Container].
   Future<void> dispose() async {
     await container.dispose();
   }

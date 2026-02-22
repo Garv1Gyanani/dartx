@@ -3,18 +3,22 @@ import 'adapter.dart';
 import 'query_builder.dart';
 import '../di/container.dart';
 
+/// Implementation of [QueryResult] for PostgreSQL.
 class PostgresQueryResult implements QueryResult {
   @override
   final List<Map<String, dynamic>> rows;
   @override
   final int? affectedRows;
 
+  /// Creates a new [PostgresQueryResult].
   PostgresQueryResult(this.rows, [this.affectedRows]);
 }
 
+/// A [DatabaseAdapter] implementation for PostgreSQL using the `package:postgres` Pool.
 class PostgresAdapter implements DatabaseAdapter, Disposable {
   final Pool _pool;
 
+  /// Creates a [PostgresAdapter] with the specified connection settings.
   PostgresAdapter({
     required String host,
     required String database,
@@ -40,8 +44,7 @@ class PostgresAdapter implements DatabaseAdapter, Disposable {
 
   @override
   Future<void> connect() async {
-    // Pool usually connects lazily, but we can verify here if needed.
-    // In v3, just accessing the pool is usually enough, but let's ensure it's healthy.
+    // Pool usually connects lazily.
   }
 
   @override
@@ -80,8 +83,11 @@ class PostgresAdapter implements DatabaseAdapter, Disposable {
   Future<void> dispose() async => await close();
 }
 
+/// Implementation of [DatabaseExecutor] for PostgreSQL sessions/transactions.
 class PostgresExecutor implements DatabaseExecutor {
   final Session _session;
+
+  /// Creates a new [PostgresExecutor] wrapping the given [session].
   PostgresExecutor(this._session);
 
   @override

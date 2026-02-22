@@ -1,0 +1,15 @@
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    - public_member_api_docs
+    - package_api_docs
+    - slash_for_doc_comments
+    - prefer_single_quotes
+    - sort_constructors_first
+    - sort_unnamed_constructors_first
+    - always_declare_return_types
+    - cancel_subscriptions
+    - close_sinks
+    - comment_references
+    - prefer_final_locals

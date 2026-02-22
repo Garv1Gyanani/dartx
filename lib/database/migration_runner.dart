@@ -2,12 +2,15 @@ import 'adapter.dart';
 import 'migration.dart';
 import '../core/logger.dart';
 
+/// Manages the execution and rollback of database migrations.
 class MigrationRunner {
   final DatabaseAdapter _db;
   final List<MigrationEntry> _registry;
 
+  /// Creates a new [MigrationRunner] with the database [db] and a [registry] of migrations.
   MigrationRunner(this._db, this._registry);
 
+  /// Runs all pending migrations that haven't been applied yet.
   Future<void> run() async {
     await _ensureMigrationsTable();
     
@@ -31,6 +34,7 @@ class MigrationRunner {
     Logger.staticInfo('✨ Successfully applied ${pending.length} migration(s) in batch $batch.');
   }
 
+  /// Rolls back the most recent batch of migrations.
   Future<void> rollback() async {
     await _ensureMigrationsTable();
     final last = await _getLastBatch();
@@ -88,8 +92,14 @@ class MigrationRunner {
   }
 }
 
+/// Represents a single migration entry in the [MigrationRunner] registry.
 class MigrationEntry {
+  /// The unique name of the migration (usually a timestamp prefix + title).
   final String name;
+
+  /// The migration instance to execute.
   final Migration migration;
+
+  /// Creates a new [MigrationEntry].
   MigrationEntry(this.name, this.migration);
 }
