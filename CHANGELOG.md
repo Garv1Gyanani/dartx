@@ -1,3 +1,10 @@
+# 0.1.1
+
+- Added matured WebSocket support with `WebSocketHub` and Rooms.
+- Enhanced API documentation for all public members.
+- Updated dependencies for improved pub score.
+- Integrated WebSocket middleware protection.
+
 # 0.1.0
 
 - Initial release of the Kronix framework.
