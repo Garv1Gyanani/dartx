@@ -29,3 +29,8 @@ database/run_migrations.dart
 
 # Scaffolded test apps
 my_blog/
+
+# Storage & Uploads
+storage/
+test_storage/
+uploads/
