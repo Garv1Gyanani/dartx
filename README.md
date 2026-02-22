@@ -1,98 +1,120 @@
-# Kronix Framework
+# 🚀 Kronix Framework
 
-Kronix is a high-performance, architecturally hardened web framework for the Dart ecosystem. It is designed for developers who require a structured, batteries-included environment for building scalable APIs with a focus on clean architecture, deterministic resource management, and robust error handling.
+[![Pub Version](https://img.shields.io/pub/v/kronix?color=blue&logo=dart)](https://pub.dev/packages/kronix)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The framework draws inspiration from established patterns found in Laravel and NestJS, bringing type-safe dependency injection, fluent database interactions, and a declarative validation system to the Dart backend.
-
----
-
-## Core Principles
-
-*   **Deterministic Lifecycle**: Every request follows a strictly awaited lifecycle phase, ensuring that resource cleanup is predictable and socket closures are reliable.
-*   **Hierarchical Dependency Injection**: Service isolation is maintained through request-scoped containers, preventing state leakage across concurrent requests.
-*   **Developer Productivity**: Comprehensive CLI tools enable rapid scaffolding of controllers, models, and migrations, following standard naming conventions.
-*   **Operational Integrity**: Built-in micro-benchmarking and structured logging provide immediate visibility into system performance and health.
+**Kronix** is a high-performance, architecturally hardened web framework for Dart. Inspired by the best patterns from Laravel, NestJS, and Go's Gin, it brings enterprise-grade features like **Distributed Queues**, **Type-Safe DI**, and **Fluent Database Interactions** to the Dart ecosystem.
 
 ---
 
-## 📚 Documentation
+## 🔥 Key Features
 
-Explore the detailed guides for each Kronix module:
+### 1. 🏗️ **Architectural Hardening**
+*   **Hierarchical DI**: Request-scoped containers prevent state leakage.
+*   **Deterministic Cleanup**: Auto-disposal of resources (DB connections, sockets).
+*   **Context-Aware**: Access everything via `ctx` — request, response, di, storage, and queue.
 
-- [**Routing & Handlers**](doc/routing.md) - Radix-Trie router, parameters, and groups.
-- [**Middleware Pipeline**](doc/middleware.md) - Filtering requests and built-in plugins.
-- [**Dependency Injection**](doc/dependency-injection.md) - Lifecycles, scoping, and the IoC container.
-- [**Validation**](doc/validation.md) - Declarative FormRequests and rule registry.
-- [**Database & ORM**](doc/database.md) - Query builder, migrations, and PostgreSQL.
-- [**File Storage**](doc/storage.md) - Multipart uploads and filesystem abstraction.
-- [**WebSockets**](doc/websockets.md) - Real-time communication, rooms, and hub.
-- [**CLI Commands**](doc/cli.md) - Scaffolding and developer workflow.
+### 2. ⚡ **High-Performance Routing**
+Trie-based Radix router with support for:
+*   Named parameters (`/users/:id`) and wildcards (`/files/*`).
+*   Route grouping with inherited middleware.
+*   Route naming for reverse URL generation.
+
+### 3. 📦 **Advanced Queue System (Enterprise Platinum)**
+Built for robustness and scale:
+*   **Distributed Locking**: Atomic dequeue using `SKIP LOCKED` (supports multiple workers).
+*   **Dead Letter Queue**: Automatically persist and retry failed jobs from a dashboard.
+*   **Rate Limiting**: Control throughput via `maxJobsPerSecond`.
+*   **Timeout Protection**: Automatically kill and retry hanging jobs.
+
+### 4. 🗄️ **Database & Migrations**
+*   **Fluent Query Builder**: Construct complex SQL without writing a line of it.
+*   **Migrations**: Batch-based tracking with atomic rollbacks.
+*   **Transactions**: Middleware support to wrap entire requests in a rollback-safe transaction.
+
+### 5. 🔌 **Real-Time WebSockets**
+Built-in `WebSocketHub` for managed real-time communication:
+*   **Rooms**: Targeted broadcasting to specific groups.
+*   **JSON Encoding**: Auto-serialization of Maps and Lists.
+*   **Presence**: Track active connections globally.
+
+### 6. 🛡️ **Validation & Auth**
+*   **Declarative Rules**: `required|email|min:8|regex:...`
+*   **JWT Auth**: Seamless token generation and middleware verification.
+*   **Plugin System**: Rate limiting, CORS, and Body size limits included.
 
 ---
 
-## Technical Features
+## 🚀 Quick Start
 
-### Routing and Middleware
-The framework utilizes a high-performance Trie-based router supporting named parameters, wildcard matching, and nested route groups. Every route can be protected by a chain of middleware, executed through an asynchronous pipeline.
+### 1. Define a Job
+```dart
+class SendEmailJob extends Job with SerializableJob {
+  final String email;
+  SendEmailJob(this.email);
 
-### Validation System
-Kronix provides a declarative `FormRequest` system. Validation rules are defined using a descriptive string syntax (e.g., `required|email|min:8`) and are validated before reaching the controller logic, returning standardized 422 responses on failure.
+  @override
+  String get name => 'SendEmailJob';
 
-### Database and Migrations
-The database layer includes a fluent Query Builder for PostgreSQL. The migration system ensures schema evolution is atomic, utilizing a batch-based execution model that allows for reliable rollbacks.
+  @override
+  String serialize() => jsonEncode({'email': email});
 
-### Resource Management
-Services can implement the `Disposable` interface to hook into the framework's cleanup phase. When a request ends, the framework automatically triggers the disposal of all scoped resources, such as database sessions or file handles.
-
----
-
-## Installation and Usage
-
-### Project Scaffolding
-Initialize a new project using the Kronix CLI:
-
-```bash
-dart run bin/kronix.dart create project_name
-cd project_name
-dart pub get
+  @override
+  Future<void> handle() async {
+    // Business logic...
+  }
+}
 ```
 
-### Server Implementation
-Define routes and start the server:
-
+### 2. Start the Server
 ```dart
-import 'package:kronix/kronix.dart';
-
 void main() async {
   final app = App();
 
-  app.get('/api/status', (ctx) async {
-    return ctx.json({'status': 'operational'});
-  });
+  // Route with Validation & Middleware
+  app.post('/register', (ctx) async {
+    final data = ctx.validate(RegisterRequest());
+    
+    // Dispatch to background queue
+    await ctx.queue.dispatch(SendEmailJob(data['email']));
+    
+    return ctx.json({'status': 'queued'});
+  }, middleware: [auth.verify()]);
 
+  // Start background worker
   await app.listen(port: 3000);
 }
 ```
 
-### Starting the Development Server
-Use the built-in watcher for hot-reloading during development:
+---
 
-```bash
-dart run bin/kronix.dart watch
+## 📊 Monitoring & Visibility
+
+Kronix is built for production observability.
+
+*   **Queue Metrics**: Real-time throughput, P95 processing times, and failure rates.
+*   **Route Explorer**: Built-in UI to visualize all registered endpoints.
+*   **Contextual Logging**: Every log entry is tagged with a unique `requestId` for easy tracing.
+
+---
+
+## 🛠 Installation
+
+Add `kronix` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  kronix: ^0.1.4
 ```
 
 ---
 
-## Performance Benchmarks
-
-Based on internal micro-benchmarks conducted on standard hardware:
-
-*   **Routing Latency**: ~1.3µs per match (tested against 1,000 routes).
-*   **Validation Overhead**: ~2.7µs per object validation.
-*   **Memory Footprint**: Optimized garbage collection through deterministic container disposal.
+## 📚 Documentation
+- [Architecture Overview](KRONIX_OVERVIEW.md)
+- [Queue System Guide](doc/queue.md)
+- [Database & Migrations](doc/database.md)
 
 ---
 
-## License
-
-This project is licensed under the MIT License.
+## 📄 License
+Kronix is open-source software licensed under the [MIT license](LICENSE).
