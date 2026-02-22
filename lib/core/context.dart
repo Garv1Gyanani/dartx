@@ -5,6 +5,7 @@ import '../di/container.dart';
 import 'validator.dart';
 import 'exceptions.dart';
 import 'websocket.dart';
+import '../filesystem/storage.dart';
 
 class AbortException implements Exception {
   final Response response;
@@ -84,6 +85,9 @@ class Context {
 
   /// Retrieves the global [WebSocketHub] from the [Container].
   WebSocketHub get wsHub => resolve<WebSocketHub>();
+
+  /// Retrieves the default [Storage] driver from the [Container].
+  Storage get storage => resolve<Storage>();
 
   /// Disposes of the request-scoped [Container].
   Future<void> dispose() async {

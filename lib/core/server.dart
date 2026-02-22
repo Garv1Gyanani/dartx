@@ -12,6 +12,9 @@ import '../http/request.dart';
 import '../http/response.dart';
 
 import 'websocket.dart';
+import 'package:mime/mime.dart';
+import '../http/file.dart';
+import '../filesystem/storage.dart';
 
 /// The main entry point for a kronix application.
 /// 
@@ -44,6 +47,10 @@ class App {
     di.singleton(_router);
     di.singleton<ExceptionHandler>(exceptionHandler);
     di.singleton(_wsHub);
+    di.singleton<Storage>(LocalStorage(
+      root: Config.get('STORAGE_ROOT', 'storage')!,
+      baseUrl: Config.get('STORAGE_URL', '/storage')!,
+    ));
     _setupDefaultRoutes();
   }
 
@@ -110,6 +117,12 @@ class App {
     }
   }
 
+  /// Stops the server and releases all bound resources.
+  Future<void> stop() async {
+     _isShuttingDown = true;
+     await _server?.close(force: true);
+  }
+
   void _handleGracefulShutdown() {
     ProcessSignal.sigint.watch().listen((_) => _shutdown());
     if (!Platform.isWindows) {
@@ -119,11 +132,13 @@ class App {
 
   Future<void> _shutdown() async {
     if (_isShuttingDown) return;
-    _isShuttingDown = true;
     Logger.staticInfo('🛑 Shutting down server...');
-    await _server?.close(force: false);
+    await stop();
     Logger.staticInfo('👋 Server stopped.');
-    exit(0);
+    // Only exit if not in test environment or explicitly requested
+    if (Config.get('APP_ENV') != 'test') {
+      exit(0);
+    }
   }
 
   Future<void> _handleRequest(HttpRequest rawRequest) async {
@@ -145,22 +160,17 @@ class App {
 
     // Parse body for non-WS requests
     Map<String, dynamic> body = {};
+    Map<String, UploadedFile> files = {};
+    
     if (!isWebSocket && rawRequest.contentLength > 0) {
-      final contentType = rawRequest.headers.contentType?.mimeType;
       try {
-        final content = await utf8.decodeStream(rawRequest);
-        if (contentType == 'application/json') {
-          body = jsonDecode(content);
-        } else if (contentType == 'application/x-www-form-urlencoded') {
-          body = Uri.splitQueryString(content);
-        }
-        if (contentType != 'application/json' && contentType != 'application/x-www-form-urlencoded') {
-          body = {'_raw': content};
-        }
+        final (parsedBody, parsedFiles) = await _parseRequestContent(rawRequest);
+        body = parsedBody;
+        files = parsedFiles;
       } catch (e) {
         rawRequest.response.statusCode = 400;
         rawRequest.response.headers.contentType = ContentType.json;
-        rawRequest.response.write(jsonEncode({'message': 'Malformed request body'}));
+        rawRequest.response.write(jsonEncode({'message': 'Malformed request body', 'error': e.toString()}));
         await rawRequest.response.close();
         return;
       }
@@ -171,6 +181,7 @@ class App {
       params: params,
       query: rawRequest.uri.queryParameters,
       body: body,
+      files: files,
     );
 
     // Create a child container for this request scope
@@ -244,6 +255,57 @@ class App {
       Logger.withContext(ctx).error('WebSocket upgrade failed: $e', error: e);
       await ctx.request.rawRequest.response.close();
     }
+  }
+
+  Future<(Map<String, dynamic>, Map<String, UploadedFile>)> _parseRequestContent(HttpRequest request) async {
+    final contentType = request.headers.contentType;
+    final mimeType = contentType?.mimeType;
+    final body = <String, dynamic>{};
+    final files = <String, UploadedFile>{};
+
+    if (mimeType == 'application/json') {
+      final content = await utf8.decodeStream(request);
+      if (content.isNotEmpty) {
+        body.addAll(jsonDecode(content));
+      }
+    } else if (mimeType == 'application/x-www-form-urlencoded') {
+      final content = await utf8.decodeStream(request);
+      if (content.isNotEmpty) {
+        body.addAll(Uri.splitQueryString(content));
+      }
+    } else if (mimeType == 'multipart/form-data') {
+      final boundary = contentType?.parameters['boundary'];
+      if (boundary != null) {
+        final transformer = MimeMultipartTransformer(boundary);
+        final parts = transformer.bind(request);
+        await for (final part in parts) {
+          final header = part.headers['content-disposition'];
+          if (header == null) continue;
+
+          final disp = HeaderValue.parse(header);
+          final name = disp.parameters['name'];
+          final filename = disp.parameters['filename'];
+
+          if (filename != null && name != null) {
+            final bytes = await part.fold<List<int>>([], (p, e) => p..addAll(e));
+            files[name] = UploadedFile(
+              filename: filename,
+              contentType: part.headers['content-type'] ?? 'application/octet-stream',
+              bytes: bytes,
+            );
+          } else if (name != null) {
+            final content = await utf8.decodeStream(part);
+            body[name] = content;
+          }
+        }
+      }
+    } else {
+       // Default to raw content if unknown
+       final content = await utf8.decodeStream(request);
+       body['_raw'] = content;
+    }
+
+    return (body, files);
   }
 
   Future<void> _sendResponse(HttpRequest rawRequest, Context ctx, Response response, Logger logger) async {

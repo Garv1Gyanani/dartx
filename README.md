@@ -24,6 +24,7 @@ Explore the detailed guides for each Kronix module:
 - [**Dependency Injection**](doc/dependency-injection.md) - Lifecycles, scoping, and the IoC container.
 - [**Validation**](doc/validation.md) - Declarative FormRequests and rule registry.
 - [**Database & ORM**](doc/database.md) - Query builder, migrations, and PostgreSQL.
+- [**File Storage**](doc/storage.md) - Multipart uploads and filesystem abstraction.
 - [**WebSockets**](doc/websockets.md) - Real-time communication, rooms, and hub.
 - [**CLI Commands**](doc/cli.md) - Scaffolding and developer workflow.
 

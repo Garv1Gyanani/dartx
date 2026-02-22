@@ -1,3 +1,11 @@
+# 0.1.3
+
+- Added `multipart/form-data` request parsing for file uploads.
+- Introduced `Storage` abstraction with `LocalStorage` support.
+- Added `UploadedFile` class for easy file manipulation.
+- Integrated `ctx.storage` for disk operations in handlers.
+- Added `App.stop()` for graceful testing and shutdown.
+
 # 0.1.2
 
 - Refactored and improved the primary example to showcase WebSockets and Validation better.
