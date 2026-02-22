@@ -1,3 +1,8 @@
+# 0.1.2
+
+- Refactored and improved the primary example to showcase WebSockets and Validation better.
+- Added `example/example.dart` for better pub.dev compatibility.
+
 # 0.1.1
 
 - Added matured WebSocket support with `WebSocketHub` and Rooms.
