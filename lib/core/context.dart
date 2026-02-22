@@ -6,6 +6,7 @@ import 'validator.dart';
 import 'exceptions.dart';
 import 'websocket.dart';
 import '../filesystem/storage.dart';
+import '../queue/queue.dart';
 
 class AbortException implements Exception {
   final Response response;
@@ -88,6 +89,9 @@ class Context {
 
   /// Retrieves the default [Storage] driver from the [Container].
   Storage get storage => resolve<Storage>();
+
+  /// Retrieves the [Queue] instance from the [Container].
+  Queue get queue => resolve<Queue>();
 
   /// Disposes of the request-scoped [Container].
   Future<void> dispose() async {

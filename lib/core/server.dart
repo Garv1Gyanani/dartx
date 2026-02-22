@@ -15,6 +15,8 @@ import 'websocket.dart';
 import 'package:mime/mime.dart';
 import '../http/file.dart';
 import '../filesystem/storage.dart';
+import '../queue/queue.dart';
+import '../queue/driver.dart';
 
 /// The main entry point for a kronix application.
 /// 
@@ -51,6 +53,7 @@ class App {
       root: Config.get('STORAGE_ROOT', 'storage')!,
       baseUrl: Config.get('STORAGE_URL', '/storage')!,
     ));
+    di.singleton<Queue>(Queue(driver: MemoryQueueDriver()));
     _setupDefaultRoutes();
   }
 

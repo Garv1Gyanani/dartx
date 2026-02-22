@@ -27,3 +27,7 @@ export 'http/file.dart';
 export 'filesystem/storage.dart';
 export 'testing/fluent_test.dart';
 export 'core/explorer.dart';
+export 'queue/job.dart';
+export 'queue/driver.dart';
+export 'queue/worker.dart';
+export 'queue/queue.dart';
