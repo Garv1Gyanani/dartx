@@ -70,35 +70,35 @@ class App {
   }
 
   /// Registers a GET route.
-  void get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('GET', path, handler, middleware: middleware, name: name);
 
   /// Registers a POST route.
-  void post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('POST', path, handler, middleware: middleware, name: name);
 
   /// Registers a PUT route.
-  void put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('PUT', path, handler, middleware: middleware, name: name);
 
   /// Registers a DELETE route.
-  void delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('DELETE', path, handler, middleware: middleware, name: name);
 
   /// Registers a PATCH route.
-  void patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('PATCH', path, handler, middleware: middleware, name: name);
 
   /// Registers a HEAD route.
-  void head(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData head(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('HEAD', path, handler, middleware: middleware, name: name);
 
   /// Registers an OPTIONS route.
-  void options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.add('OPTIONS', path, handler, middleware: middleware, name: name);
 
   /// Registers a WebSocket endpoint at the specified [path].
-  void ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) => 
+  RouteData ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) => 
     _router.ws(path, handler, middleware: middleware, name: name);
 
   /// Starts the HTTP/WebSocket server and listens for incoming requests.
@@ -152,7 +152,7 @@ class App {
          return;
       }
       rawRequest.response.statusCode = 404;
-      rawRequest.response.headers.contentType = ContentType.json;
+      rawRequest.response.headers.set('content-type', 'application/json');
       rawRequest.response.write(jsonEncode({'message': 'Not Found'}));
       await rawRequest.response.close();
       return;
@@ -169,7 +169,7 @@ class App {
         files = parsedFiles;
       } catch (e) {
         rawRequest.response.statusCode = 400;
-        rawRequest.response.headers.contentType = ContentType.json;
+        rawRequest.response.headers.set('content-type', 'application/json');
         rawRequest.response.write(jsonEncode({'message': 'Malformed request body', 'error': e.toString()}));
         await rawRequest.response.close();
         return;
@@ -207,17 +207,20 @@ class App {
     } catch (e) {
        if (isWebSocket) {
           logger.error('WebSocket Error: $e', error: e);
-          await rawRequest.response.close();
+          try {
+            await rawRequest.response.close();
+          } catch (_) {}
           return;
        }
       final response = exceptionHandler.render(ctx, e);
       try {
         await _sendResponse(rawRequest, ctx, response, logger);
       } catch (sendError) {
-        logger.error('Failed to send error response: $sendError', error: sendError);
+        // If we failed to send the error response, the connection is likely dead
+        logger.error('Critical failure: Could not send error response: $sendError', error: sendError);
       }
     } finally {
-      await ctx.dispose(); // Deterministic tail phase cleanup
+      await ctx.dispose();
     }
   }
 
@@ -312,20 +315,38 @@ class App {
     final duration = ctx.elapsed;
     
     try {
-      rawRequest.response.statusCode = response.statusCode;
-      response.headers.forEach((key, value) {
-        rawRequest.response.headers.set(key, value);
-      });
+      final res = rawRequest.response;
+      res.statusCode = response.statusCode;
       
-      if (response.body != null) {
-        rawRequest.response.write(response.body);
+      // Apply response headers
+      for (final entry in response.headers.entries) {
+        final k = entry.key.toLowerCase();
+        if (k == 'content-type') {
+          // Ensure charset=utf-8 is set for text types
+          final ct = entry.value;
+          if (ct.startsWith('text/') && !ct.contains('charset')) {
+            res.headers.contentType = ContentType.parse('$ct; charset=utf-8');
+          } else if (ct == 'application/json' && !ct.contains('charset')) {
+            res.headers.contentType = ContentType.parse('$ct; charset=utf-8');
+          } else {
+            res.headers.contentType = ContentType.parse(ct);
+          }
+        } else if (k == 'location') {
+          res.headers.set('location', entry.value);
+        } else {
+          res.headers.set(entry.key, entry.value);
+        }
       }
-      await rawRequest.response.close();
+      
+      // Write body as UTF-8 bytes to avoid latin1 encoding errors
+      if (response.body != null) {
+        res.add(utf8.encode(response.body.toString()));
+      }
+      await res.close();
       
       logger.info('${rawRequest.method} ${rawRequest.uri.path} - ${response.statusCode} (${duration.inMilliseconds}ms)');
     } catch (e) {
       logger.error('Error writing response to socket: $e', error: e);
-      // Re-throw to be caught by the outer catch if applicable, though usually we are done here
       rethrow;
     }
   }

@@ -31,6 +31,15 @@ class RouteData {
   /// The full path pattern for this route.
   final String path;
 
+  /// A short summary of what the route does.
+  String? summary;
+
+  /// A detailed description of the route.
+  String? description;
+
+  /// Arbitrary metadata for the route (e.g., tags, security requirements).
+  final Map<String, dynamic> metadata = {};
+
   /// Creates a new [RouteData] instance.
   RouteData({
     this.handler,
@@ -43,6 +52,24 @@ class RouteData {
 
   /// Returns `true` if this route is a WebSocket entry point.
   bool get isWebSocket => wsHandler != null;
+
+  /// Fluent method to set the route [summary].
+  RouteData setSummary(String text) {
+    summary = text;
+    return this;
+  }
+
+  /// Fluent method to set the route [description].
+  RouteData setDescription(String text) {
+    description = text;
+    return this;
+  }
+
+  /// Fluent method to add custom [metadata] entries.
+  RouteData setMeta(String key, dynamic value) {
+    metadata[key] = value;
+    return this;
+  }
 }
 
 class RouteNode {
@@ -66,6 +93,9 @@ class Router {
   final Map<String, String> _namedRoutes = {};
   final List<RouteData> _allRoutes = [];
   
+  /// Returns all registered routes and their metadata.
+  List<RouteData> get allRoutes => List.unmodifiable(_allRoutes);
+  
   // Internal state for building routes
   String _buildingPrefix = '';
   List<Middleware> _buildingMiddleware = [];
@@ -84,8 +114,8 @@ class Router {
     _buildingMiddleware = oldMiddleware;
   }
 
-  /// Registers a standard HTTP route.
-  void add(String method, String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  /// Registers a standard HTTP route and returns its [RouteData].
+  RouteData add(String method, String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
     final fullPath = '$_buildingPrefix$path'.replaceAll('//', '/');
     final allMiddleware = List<Middleware>.from(_buildingMiddleware)..addAll(middleware);
 
@@ -101,13 +131,14 @@ class Router {
       path: fullPath
     );
     _registerRoute(fullPath, method, data);
+    return data;
   }
 
-  /// Registers a WebSocket route.
+  /// Registers a WebSocket route and returns its [RouteData].
   /// 
   /// WebSocket routes are matched when an incoming request has the 
   /// `Upgrade: websocket` header.
-  void ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) {
     final fullPath = '$_buildingPrefix$path'.replaceAll('//', '/');
     final allMiddleware = List<Middleware>.from(_buildingMiddleware)..addAll(middleware);
 
@@ -123,6 +154,7 @@ class Router {
       path: fullPath
     );
     _registerRoute(fullPath, 'WS', data);
+    return data;
   }
 
   void _registerRoute(String path, String method, RouteData data) {
@@ -149,11 +181,11 @@ class Router {
   }
 
   // Shorthands
-  void get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('GET', path, handler, middleware: middleware, name: name);
-  void post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('POST', path, handler, middleware: middleware, name: name);
-  void put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('PUT', path, handler, middleware: middleware, name: name);
-  void delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('DELETE', path, handler, middleware: middleware, name: name);
-  void patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('PATCH', path, handler, middleware: middleware, name: name);
+  RouteData get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('GET', path, handler, middleware: middleware, name: name);
+  RouteData post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('POST', path, handler, middleware: middleware, name: name);
+  RouteData put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('PUT', path, handler, middleware: middleware, name: name);
+  RouteData delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('DELETE', path, handler, middleware: middleware, name: name);
+  RouteData patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => add('PATCH', path, handler, middleware: middleware, name: name);
 
   String? url(String name, {Map<String, dynamic> params = const {}}) {
     String? path = _namedRoutes[name];

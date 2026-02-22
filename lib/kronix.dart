@@ -25,3 +25,5 @@ export 'database/migration_runner.dart';
 export 'core/websocket.dart';
 export 'http/file.dart';
 export 'filesystem/storage.dart';
+export 'testing/fluent_test.dart';
+export 'core/explorer.dart';

@@ -1,3 +1,12 @@
+# 0.1.4
+
+- **Fluent Functional Testing** — `app.test().get('/api').assertStatus(200).assertJsonPath('data.id', 1)`.
+- **Route Explorer** — Auto-generated API docs at `/docs` (HTML) and `/docs/json` (JSON).
+- **Route metadata** — Fluent `.setSummary()`, `.setDescription()`, `.setMeta()` on route registrations.
+- **`App.stop()`** for clean test teardown without `exit(0)`.
+- **Fixed** UTF-8 response encoding crash on multi-byte characters (emojis in HTML).
+- All route registration methods now return `RouteData` for chaining.
+
 # 0.1.3
 
 - Added `multipart/form-data` request parsing for file uploads.
