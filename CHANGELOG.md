@@ -1,3 +1,13 @@
+# 0.1.5
+
+- **Type-Safe Database Flow** — `ctx.query<User>(User.fromRow)` returns typed model instances.
+- **Fluent Schema Builder** — Declarative migrations with `Schema(db).create('table', (t) => ...)`.
+- **Wildcard Validation** — Support for `items.*` rules in `Validator`.
+- **Advanced Concurrency Control** — `MAX_CONCURRENT_REQUESTS` backpressure with 503 rejection.
+- **Improved DI Isolation** — Stronger child container boundaries for high-parallelism safety.
+- **Fixed** duplicate `Model` export conflict.
+- **Renamed** `ctx.query` to `ctx.queryParams` to avoid ORM collision.
+
 # 0.1.4
 
 - **Fluent Functional Testing** — `app.test().get('/api').assertStatus(200).assertJsonPath('data.id', 1)`.

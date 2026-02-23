@@ -1,16 +1,17 @@
-# Exclude website and other non-package files
-dartxwebsite/
-my_blog/
+# Exclude test outputs and temporary files from the published package
+test_output.txt
+mega_test_output.txt
+extreme_test_output.txt
+publish_dry_run.txt
+publish_dry_run_v2.txt
+publish_dry_run_v3.txt
 test_results.txt
 verification_output.txt
+.env
+temp/
+storage/
+dartxwebsite/
+my_blog/
 hello.dart
 test_simple.dart
-.env
-.idea/
-.vscode/
-build/
-*.g.dart
-database/run_migrations.dart
-publish_output.txt
-publish_output_utf8.txt
-analyze_output.txt
+test_suite.ps1

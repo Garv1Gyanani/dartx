@@ -1,6 +1,5 @@
 import 'server.dart';
 import 'router.dart';
-import '../http/response.dart';
 
 /// A utility to generate a document representation of all registered routes.
 class RouteExplorer {

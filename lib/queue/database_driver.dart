@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'job.dart';
 import 'driver.dart';
 import '../database/adapter.dart';
@@ -153,7 +152,7 @@ class DatabaseQueueDriver implements QueueDriver {
   Future<void> push(Job job, [String queue = 'default']) async {
     String? payload;
     if (job is SerializableJob) {
-      payload = (job as SerializableJob).serialize();
+      payload = job.serialize();
     }
 
     await _db.query('''
