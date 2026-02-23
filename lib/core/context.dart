@@ -41,18 +41,20 @@ class Context {
 
   T resolve<T>({String? name}) => container.resolve<T>(name: name);
 
-  Map<String, dynamic> validate(FormRequest request) {
-    return validateData(request.rules(), request.messages());
+  Future<Map<String, dynamic>> validate(FormRequest request) async {
+    return await validateData(request.rules(), request.messages());
   }
 
-  Map<String, dynamic> validateData(Map<String, String> rules, [Map<String, String>? messages]) {
-    final errors = Validator.validate(body, rules, messages);
+  Future<Map<String, dynamic>> validateData(Map<String, String> rules, [Map<String, String>? messages]) async {
+    final result = await Validator.validate(body, rules, messages);
     
-    if (errors.isNotEmpty) {
-      throw ValidationException(errors);
+    if (result.fails) {
+      throw ValidationException(result.errors);
     }
     
-    return body;
+    // Merge coerced data back into request body or return as "cleaned" data
+    // Usually, we return the cleaned data so the controller doesn't use unvalidated input
+    return result.data;
   }
 
   void abort(Response res) {

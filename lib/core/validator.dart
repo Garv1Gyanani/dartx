@@ -1,8 +1,6 @@
+import 'dart:async';
 
 /// Interface for classes that define validation rules and messages.
-/// 
-/// Extend this class to create specific request validation logic for your
-/// controllers.
 abstract class FormRequest {
   /// Returns a map of field names to validation rule strings (e.g., 'required|email').
   Map<String, String> rules();
@@ -11,21 +9,31 @@ abstract class FormRequest {
   Map<String, String> messages() => {};
 }
 
-/// A function that validates a value against an optional argument.
-typedef RuleHandler = bool Function(dynamic value, String? arg);
+/// A function that validates a value against an optional argument and the full data map.
+typedef RuleHandler = FutureOr<bool> Function(dynamic value, String? arg, Map<String, dynamic> data);
+
+/// Result of a validation operation containing errors and coerced data.
+class ValidationResult {
+  final Map<String, List<String>> errors;
+  final Map<String, dynamic> data;
+
+  ValidationResult(this.errors, this.data);
+
+  bool get fails => errors.isNotEmpty;
+  bool get passes => errors.isEmpty;
+}
 
 /// The core validation engine for the Kronix framework.
 class Validator {
   /// Registry of validation rules. Can be extended by users to add custom rules.
-  /// Registry of validation rules. Can be extended by users to add custom rules.
   static final Map<String, RuleHandler> ruleHandlers = {
-    'required': (val, _) => val != null && val.toString().trim().isNotEmpty,
-    'email': (val, _) {
-      if (val == null || val.toString().isEmpty) return true; // Let 'required' handle empty
+    'required': (val, _, __) => val != null && val.toString().trim().isNotEmpty,
+    'email': (val, _, __) {
+      if (val == null || val.toString().isEmpty) return true;
       return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
           .hasMatch(val.toString());
     },
-    'min': (val, arg) {
+    'min': (val, arg, __) {
       if (val == null || arg == null) return true;
       final min = int.tryParse(arg) ?? 0;
       if (val is String) return val.length >= min;
@@ -33,7 +41,7 @@ class Validator {
       if (val is List) return val.length >= min;
       return true;
     },
-    'max': (val, arg) {
+    'max': (val, arg, __) {
       if (val == null || arg == null) return true;
       final max = int.tryParse(arg) ?? 0;
       if (val is String) return val.length <= max;
@@ -41,56 +49,76 @@ class Validator {
       if (val is List) return val.length <= max;
       return true;
     },
-    'numeric': (val, _) {
+    'numeric': (val, _, __) {
       if (val == null) return true;
       return num.tryParse(val.toString()) != null;
     },
-    'boolean': (val, _) {
-       if (val == null) return true;
+    'boolean': (val, _, __) {
+      if (val == null) return true;
       if (val is bool) return true;
       final s = val.toString().toLowerCase();
       return s == 'true' || s == 'false' || s == '1' || s == '0';
     },
-    'in': (val, arg) {
+    'in': (val, arg, __) {
       if (val == null || arg == null) return true;
       final options = arg.split(',');
       return options.contains(val.toString());
     },
-    'not_in': (val, arg) {
+    'not_in': (val, arg, __) {
       if (val == null || arg == null) return true;
       final options = arg.split(',');
       return !options.contains(val.toString());
     },
-    'url': (val, _) {
+    'url': (val, _, __) {
       if (val == null || val.toString().isEmpty) return true;
-      return Uri.tryParse(val.toString())?.hasAbsolutePath ?? false;
+      final uri = Uri.tryParse(val.toString());
+      return uri != null && uri.hasScheme && uri.hasAuthority;
     },
-    'integer': (val, _) {
+    'integer': (val, _, __) {
       if (val == null) return true;
       return int.tryParse(val.toString()) != null;
     },
-    'string': (val, _) => val is String,
-    'array': (val, _) => val is List,
-    'alpha': (val, _) => val == null || RegExp(r'^[a-zA-Z]+$').hasMatch(val.toString()),
-    'alpha_num': (val, _) => val == null || RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.toString()),
-    'regex': (val, arg) => val == null || arg == null || RegExp(arg).hasMatch(val.toString()),
+    'string': (val, _, __) => val is String,
+    'array': (val, _, __) => val is List,
+    'alpha': (val, _, __) => val == null || RegExp(r'^[a-zA-Z]+$').hasMatch(val.toString()),
+    'alpha_num': (val, _, __) => val == null || RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.toString()),
+    'regex': (val, arg, __) {
+      if (val == null || arg == null) return true;
+      try {
+        return RegExp(arg).hasMatch(val.toString());
+      } catch (_) {
+        return false;
+      }
+    },
+    'confirmed': (val, arg, data) {
+      final fieldToCompare = arg ?? 'password_confirmation';
+      return val == data[fieldToCompare];
+    },
   };
 
   /// Validates the [data] against the provided [rules].
-  /// 
-  /// Returns a map of field names to a list of error strings. If the map is 
-  /// empty, validation passed.
-  static Map<String, List<String>> validate(Map<String, dynamic> data, Map<String, String> rules, [Map<String, String>? customMessages]) {
+  static Future<ValidationResult> validate(
+    Map<String, dynamic> data,
+    Map<String, String> rules, [
+    Map<String, String>? customMessages,
+  ]) async {
     final Map<String, List<String>> errors = {};
+    final Map<String, dynamic> validatedData = {};
 
-    rules.forEach((field, ruleString) {
+    for (final entry in rules.entries) {
+      final field = entry.key;
+      final ruleString = entry.value;
       final fieldRules = ruleString.split('|');
-      final value = data[field];
+      final value = _getNestedValue(data, field);
+
+      bool fieldFailed = false;
+      bool shouldBail = fieldRules.contains('bail');
 
       for (final rule in fieldRules) {
+        if (rule == 'bail') continue;
+
         var ruleName = rule;
         String? arg;
-
         if (rule.contains(':')) {
           final parts = rule.split(':');
           ruleName = parts[0];
@@ -99,16 +127,71 @@ class Validator {
 
         final handler = ruleHandlers[ruleName];
         if (handler != null) {
-          if (!handler(value, arg)) {
+          final passed = await handler(value, arg, data);
+          if (!passed) {
             final message = _getMessage(field, ruleName, arg, customMessages);
             errors[field] ??= [];
             errors[field]!.add(message);
+            fieldFailed = true;
+            
+            // Short-circuit on first failure if bail is set or if required fails
+            if (shouldBail || ruleName == 'required') break;
           }
         }
       }
-    });
 
-    return errors;
+      if (!fieldFailed) {
+        _setNestedValue(validatedData, field, _coerceValue(value, fieldRules));
+      }
+    }
+
+    return ValidationResult(errors, validatedData);
+  }
+
+  static dynamic _getNestedValue(Map<String, dynamic> data, String path) {
+    if (!path.contains('.')) return data[path];
+    
+    dynamic current = data;
+    for (final segment in path.split('.')) {
+      if (current is Map && current.containsKey(segment)) {
+        current = current[segment];
+      } else {
+        return null;
+      }
+    }
+    return current;
+  }
+
+  static void _setNestedValue(Map<String, dynamic> data, String path, dynamic value) {
+    if (!path.contains('.')) {
+      data[path] = value;
+      return;
+    }
+
+    final segments = path.split('.');
+    Map<String, dynamic> current = data;
+    for (int i = 0; i < segments.length - 1; i++) {
+      final segment = segments[i];
+      current = current.putIfAbsent(segment, () => <String, dynamic>{});
+    }
+    current[segments.last] = value;
+  }
+
+  static dynamic _coerceValue(dynamic value, List<String> rules) {
+    if (value == null) return null;
+    
+    if (rules.contains('integer')) {
+      return int.tryParse(value.toString()) ?? value;
+    }
+    if (rules.contains('numeric')) {
+      return num.tryParse(value.toString()) ?? value;
+    }
+    if (rules.contains('boolean')) {
+      final s = value.toString().toLowerCase();
+      if (s == 'true' || s == '1') return true;
+      if (s == 'false' || s == '0') return false;
+    }
+    return value;
   }
 
   static String _getMessage(String field, String rule, String? arg, Map<String, String>? customMessages) {
@@ -133,6 +216,7 @@ class Validator {
       case 'alpha': return 'The $field may only contain letters.';
       case 'alpha_num': return 'The $field may only contain letters and numbers.';
       case 'regex': return 'The $field format is invalid.';
+      case 'confirmed': return 'The $field confirmation does not match.';
       default: return 'The $field field is invalid.';
     }
   }
