@@ -2,6 +2,9 @@ import 'dart:math';
 import '../http/request.dart';
 import '../http/response.dart';
 import '../di/container.dart';
+import '../database/adapter.dart';
+import '../database/model.dart';
+import '../database/model_query.dart';
 import 'validator.dart';
 import 'exceptions.dart';
 import 'websocket.dart';
@@ -91,6 +94,28 @@ class Context {
 
   /// Retrieves the default [Storage] driver from the [Container].
   Storage get storage => resolve<Storage>();
+
+  /// Retrieves the active [DatabaseExecutor] from the [Container].
+  /// 
+  /// If a transaction middleware is active, this returns the transaction scope.
+  /// Otherwise, returns the global [DatabaseAdapter].
+  DatabaseExecutor get db {
+    try {
+      return resolve<DatabaseExecutor>();
+    } catch (_) {
+      return resolve<DatabaseAdapter>();
+    }
+  }
+
+  /// Creates a type-safe [ModelQuery] for the given model type [T].
+  /// 
+  /// ```dart
+  /// final users = await ctx.query<User>(User.fromRow).where('active', '=', true).get();
+  /// final user = await ctx.query<User>(User.fromRow).find(1);
+  /// ```
+  ModelQuery<T> query<T extends Model>(ModelFactory<T> factory, {String? tableName}) {
+    return ModelQuery<T>(db, factory, tableName: tableName);
+  }
 
   /// Retrieves the [Queue] instance from the [Container].
   Queue get queue => resolve<Queue>();
