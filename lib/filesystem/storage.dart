@@ -9,6 +9,11 @@ abstract class Storage {
   /// Returns the path where the file was stored.
   Future<String> put(String path, List<int> bytes);
 
+  /// Stores a file from the [localPath] at the specified [targetPath].
+  /// 
+  /// This is more memory-efficient than [put] for large files.
+  Future<String> putFile(String targetPath, String localPath);
+
   /// Retrieves the content of the file at [path] as bytes.
   Future<List<int>> get(String path);
 
@@ -42,6 +47,19 @@ class LocalStorage implements Storage {
     }
     await file.writeAsBytes(bytes);
     return path;
+  }
+
+  @override
+  Future<String> putFile(String targetPath, String localPath) async {
+    final fullPath = p.join(root, targetPath);
+    final targetFile = File(fullPath);
+    if (!await targetFile.parent.exists()) {
+      await targetFile.parent.create(recursive: true);
+    }
+
+    // Copy the file to the storage location
+    await File(localPath).copy(fullPath);
+    return targetPath;
   }
 
   @override

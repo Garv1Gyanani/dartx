@@ -28,7 +28,9 @@ class App {
   final WebSocketHub _wsHub = WebSocketHub();
   HttpServer? _server;
   bool _isShuttingDown = false;
-  
+  int _activeHttpCounter = 0;
+  int _activeWSCounter = 0;
+
   /// The global exception handler used to transform errors into responses.
   ExceptionHandler exceptionHandler = DefaultExceptionHandler();
 
@@ -37,7 +39,16 @@ class App {
 
   /// Provides access to the global [WebSocketHub].
   WebSocketHub get wsHub => _wsHub;
+  
+  /// Returns the total number of active connections (HTTP + WebSocket).
+  int get activeRequests => _activeHttpCounter + _activeWSCounter;
 
+  /// Returns the number of active HTTP requests.
+  int get activeHttpRequests => _activeHttpCounter;
+
+  /// Returns the number of active WebSocket connections.
+  int get activeWebSockets => _activeWSCounter;
+  
   /// Initializes a new kronix application.
   /// 
   /// During initialization, the framework:
@@ -53,13 +64,34 @@ class App {
       root: Config.get('STORAGE_ROOT', 'storage')!,
       baseUrl: Config.get('STORAGE_URL', '/storage')!,
     ));
-    di.singleton<Queue>(Queue(driver: MemoryQueueDriver()));
+    
+    // Resolve Queue driver from config
+    final queueDriverName = Config.get('QUEUE_DRIVER', 'memory');
+    final QueueDriver driver = _resolveQueueDriver(queueDriverName);
+    di.singleton<Queue>(Queue(driver: driver));
+
     _setupDefaultRoutes();
+  }
+
+  QueueDriver _resolveQueueDriver(String name) {
+    switch (name.toLowerCase()) {
+      case 'memory':
+        return MemoryQueueDriver();
+      // In a real app, we'd have 'redis', 'db', etc. here
+      default:
+        Logger.staticWarning('Unknown queue driver "$name", falling back to memory.');
+        return MemoryQueueDriver();
+    }
   }
 
   void _setupDefaultRoutes() {
     get('/health', (ctx) async => ctx.json({'status': 'ok'}));
-    get('/ready', (ctx) async => ctx.json({'status': _isShuttingDown ? 'down' : 'ok'}));
+    get('/ready', (ctx) async => ctx.json({
+      'status': _isShuttingDown ? 'down' : 'ok',
+      'active_requests': activeRequests,
+      'http_requests': _activeHttpCounter,
+      'websockets': _activeWSCounter,
+    }));
   }
 
   /// Registers a global [middleware] to be executed for every request.
@@ -115,15 +147,22 @@ class App {
     _handleGracefulShutdown();
 
     await for (HttpRequest rawRequest in _server!) {
-      if (_isShuttingDown) continue;
+      if (_isShuttingDown) {
+        rawRequest.response.statusCode = 503;
+        rawRequest.response.headers.set('content-type', 'application/json');
+        rawRequest.response.write(jsonEncode({'message': 'Server is shutting down'}));
+        await rawRequest.response.close();
+        continue;
+      }
       _handleRequest(rawRequest);
     }
   }
 
   /// Stops the server and releases all bound resources.
-  Future<void> stop() async {
+  Future<void> stop({bool force = false}) async {
+  
      _isShuttingDown = true;
-     await _server?.close(force: true);
+     await _server?.close(force: force);
   }
 
   void _handleGracefulShutdown() {
@@ -135,9 +174,29 @@ class App {
 
   Future<void> _shutdown() async {
     if (_isShuttingDown) return;
-    Logger.staticInfo('🛑 Shutting down server...');
-    await stop();
-    Logger.staticInfo('👋 Server stopped.');
+    _isShuttingDown = true;
+    Logger.staticInfo('🛑 Shutting down server... Draining $activeRequests total connections.');
+
+    // Stop accepting new connections but keep the socket pool alive for now
+    final stopFuture = stop(force: false);
+    
+    int timeoutSeconds = 15;
+    while (activeRequests > 0 && timeoutSeconds > 0) {
+      await Future.delayed(Duration(seconds: 1));
+      timeoutSeconds--;
+      if (timeoutSeconds % 5 == 0 && timeoutSeconds > 0) {
+        Logger.staticInfo('⏳ Waiting for $activeRequests connections... ($timeoutSeconds s remaining)');
+      }
+    }
+
+    if (activeRequests > 0) {
+      Logger.staticWarning('⚠️ Timeout reached. Forcing closure of $activeRequests connections.');
+      await stop(force: true);
+    } else {
+      await stopFuture;
+      Logger.staticInfo('👋 All connections drained. Server stopped.');
+    }
+
     // Only exit if not in test environment or explicitly requested
     if (Config.get('APP_ENV') != 'test') {
       exit(0);
@@ -146,54 +205,74 @@ class App {
 
   Future<void> _handleRequest(HttpRequest rawRequest) async {
     final isWebSocket = WebSocketTransformer.isUpgradeRequest(rawRequest);
-    final (routeData, params) = _router.match(isWebSocket ? 'WS' : rawRequest.method, rawRequest.uri);
-
-    if (routeData == null) {
-      if (isWebSocket) {
-         rawRequest.response.statusCode = 404;
-         await rawRequest.response.close();
-         return;
-      }
-      rawRequest.response.statusCode = 404;
-      rawRequest.response.headers.set('content-type', 'application/json');
-      rawRequest.response.write(jsonEncode({'message': 'Not Found'}));
-      await rawRequest.response.close();
-      return;
-    }
-
-    // Parse body for non-WS requests
-    Map<String, dynamic> body = {};
-    Map<String, UploadedFile> files = {};
     
-    if (!isWebSocket && rawRequest.contentLength > 0) {
-      try {
-        final (parsedBody, parsedFiles) = await _parseRequestContent(rawRequest);
-        body = parsedBody;
-        files = parsedFiles;
-      } catch (e) {
-        rawRequest.response.statusCode = 400;
+    // Strict Concurrency Control (Pre-increment to avoid races)
+    if (isWebSocket) {
+      _activeWSCounter++;
+      final maxWS = Config.getInt('MAX_WS_CONNECTIONS', 1000)!;
+      if (_activeWSCounter > maxWS) {
+        _activeWSCounter--;
+        rawRequest.response.statusCode = 503;
+        await rawRequest.response.close();
+        return;
+      }
+    } else {
+      _activeHttpCounter++;
+      final maxHttp = Config.getInt('MAX_CONCURRENT_REQUESTS', 100)!;
+      if (_activeHttpCounter > maxHttp) {
+        _activeHttpCounter--;
+        rawRequest.response.statusCode = 503;
         rawRequest.response.headers.set('content-type', 'application/json');
-        rawRequest.response.write(jsonEncode({'message': 'Malformed request body', 'error': e.toString()}));
+        rawRequest.response.write(jsonEncode({
+          'message': 'Service Unavailable',
+          'error': 'Server is under high load. Please try again later.'
+        }));
         await rawRequest.response.close();
         return;
       }
     }
-
-    final request = Request(
-      rawRequest: rawRequest,
-      params: params,
-      query: rawRequest.uri.queryParameters,
-      body: body,
-      files: files,
-    );
-
-    // Create a child container for this request scope
-    final requestContainer = di.child();
-    final ctx = Context(request, container: requestContainer);
-    final logger = Logger.withContext(ctx);
     
+    Context? ctx;
+    bool isWSUpgradeHandled = false;
+
     try {
+      final (routeData, params) = _router.match(isWebSocket ? 'WS' : rawRequest.method, rawRequest.uri);
+
+      if (routeData == null) {
+        rawRequest.response.statusCode = 404;
+        if (!isWebSocket) {
+          rawRequest.response.headers.set('content-type', 'application/json');
+          rawRequest.response.write(jsonEncode({'message': 'Not Found'}));
+        }
+        await rawRequest.response.close();
+        return;
+      }
+
+      // Parse body for non-WS requests
+      Map<String, dynamic> body = {};
+      Map<String, UploadedFile> files = {};
+      
+      if (!isWebSocket && (rawRequest.contentLength > 0 || rawRequest.headers.chunkedTransferEncoding)) {
+        final (parsedBody, parsedFiles) = await _parseRequestContent(rawRequest);
+        body = parsedBody;
+        files = parsedFiles;
+      }
+
+      final request = Request(
+        rawRequest: rawRequest,
+        params: params,
+        query: rawRequest.uri.queryParameters,
+        body: body,
+        files: files,
+      );
+
+      final requestContainer = di.child();
+      ctx = Context(request, container: requestContainer);
+      final logger = Logger.withContext(ctx);
+
       if (isWebSocket && routeData.isWebSocket) {
+        isWSUpgradeHandled = true;
+        // WS keeps the counter and context until socket is closed
         await _handleWebSocket(ctx, routeData);
         return;
       }
@@ -208,58 +287,71 @@ class App {
       
       await _sendResponse(rawRequest, ctx, response, logger);
     } catch (e) {
-       if (isWebSocket) {
-          logger.error('WebSocket Error: $e', error: e);
-          try {
+      if (isWebSocket && !isWSUpgradeHandled) {
+        // WS upgrade failed before we handed off to _handleWebSocket
+        try { await rawRequest.response.close(); } catch (_) {}
+      } else if (!isWebSocket) {
+        final response = ctx != null 
+          ? exceptionHandler.render(ctx, e)
+          : Response.json({'message': 'Bad Request', 'error': e.toString()}, status: 400);
+
+        try {
+          if (ctx != null) {
+            await _sendResponse(rawRequest, ctx, response, Logger.withContext(ctx));
+          } else {
+            // Context-less response
+            rawRequest.response.statusCode = response.statusCode;
+            rawRequest.response.headers.set('content-type', 'application/json');
+            rawRequest.response.write(jsonEncode(response.body ?? {'message': 'Error'}));
             await rawRequest.response.close();
-          } catch (_) {}
-          return;
-       }
-      final response = exceptionHandler.render(ctx, e);
-      try {
-        await _sendResponse(rawRequest, ctx, response, logger);
-      } catch (sendError) {
-        // If we failed to send the error response, the connection is likely dead
-        logger.error('Critical failure: Could not send error response: $sendError', error: sendError);
+          }
+        } catch (_) {}
       }
     } finally {
-      await ctx.dispose();
+      if (!isWSUpgradeHandled) {
+        if (isWebSocket) {
+          _activeWSCounter--;
+        } else {
+          _activeHttpCounter--;
+        }
+        if (ctx != null) {
+          await ctx.dispose();
+        }
+      }
     }
   }
 
   Future<void> _handleWebSocket(Context ctx, RouteData routeData) async {
-    // Run global middleware, then route middleware, then the upgrade
     try {
-      // NOTE: Traditional middleware might not work as expected with WebSocket upgrades 
-      // because they expect to return a Response object. 
-      // For now, we allow them to run, and if any aborts/returns a response, we stop.
-      
       final result = await _pipeline.exec(ctx, (lvlCtx) async {
         final routePipeline = Pipeline();
         for (var m in routeData.middleware) {
           routePipeline.use(m);
         }
-        
-        // We need a dummy handler to return a "null" response or similar if we reach the end
         return await routePipeline.exec(lvlCtx, (c) async => Response(statusCode: 101));
       });
 
       if (result.statusCode != 101) {
-        // One of the middlewares returned a response (e.g. Auth failure)
         await _sendResponse(ctx.request.rawRequest, ctx, result, Logger.withContext(ctx));
         return;
       }
 
       final socket = await WebSocketTransformer.upgrade(ctx.request.rawRequest);
       final connection = WebSocketConnection(socket, ctx);
-      
-      // Register in global hub for broadcasting
       _wsHub.register(connection);
       
       await routeData.wsHandler!(connection);
+      
+      // Wait for the socket to truly close
+      await socket.done;
     } catch (e) {
       Logger.withContext(ctx).error('WebSocket upgrade failed: $e', error: e);
-      await ctx.request.rawRequest.response.close();
+      try {
+        await ctx.request.rawRequest.response.close();
+      } catch (_) {}
+    } finally {
+      _activeWSCounter--;
+      await ctx.dispose();
     }
   }
 
@@ -284,6 +376,12 @@ class App {
       if (boundary != null) {
         final transformer = MimeMultipartTransformer(boundary);
         final parts = transformer.bind(request);
+        
+        final maxPartSize = Config.getInt('MAX_UPLOAD_SIZE_PER_PART', 10 * 1024 * 1024)!; 
+        final maxTotalSize = Config.getInt('MAX_TOTAL_UPLOAD_SIZE', 50 * 1024 * 1024)!;
+
+        int totalBytesAcrossParts = 0;
+
         await for (final part in parts) {
           final header = part.headers['content-disposition'];
           if (header == null) continue;
@@ -293,12 +391,42 @@ class App {
           final filename = disp.parameters['filename'];
 
           if (filename != null && name != null) {
-            final bytes = await part.fold<List<int>>([], (p, e) => p..addAll(e));
-            files[name] = UploadedFile(
-              filename: filename,
-              contentType: part.headers['content-type'] ?? 'application/octet-stream',
-              bytes: bytes,
-            );
+            // Create a temp directory that will be deleted along with the file
+            final tempDir = Directory.systemTemp.createTempSync('kronix_');
+            final safeFilename = 'up_${DateTime.now().millisecondsSinceEpoch}_${name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')}';
+            final tempPath = '${tempDir.path}${Platform.pathSeparator}$safeFilename';
+            
+            final file = File(tempPath);
+            final sink = file.openWrite();
+            int currentPartBytes = 0;
+            
+            try {
+              await for (final chunk in part) {
+                currentPartBytes += chunk.length;
+                totalBytesAcrossParts += chunk.length;
+                
+                if (currentPartBytes > maxPartSize) {
+                  throw Exception('File "$filename" exceeds part limit of $maxPartSize bytes');
+                }
+                if (totalBytesAcrossParts > maxTotalSize) {
+                  throw Exception('Total request upload exceeds limit of $maxTotalSize bytes');
+                }
+                sink.add(chunk);
+              }
+              await sink.close();
+
+              files[name] = UploadedFile(
+                filename: filename,
+                contentType: part.headers['content-type'] ?? 'application/octet-stream',
+                tempPath: tempPath,
+                tempDir: tempDir.path,
+                size: currentPartBytes,
+              );
+            } catch (e) {
+              await sink.close();
+              if (await tempDir.exists()) await tempDir.delete(recursive: true);
+              rethrow;
+            }
           } else if (name != null) {
             final content = await utf8.decodeStream(part);
             body[name] = content;

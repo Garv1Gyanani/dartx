@@ -93,8 +93,15 @@ class Context {
   /// Retrieves the [Queue] instance from the [Container].
   Queue get queue => resolve<Queue>();
 
-  /// Disposes of the request-scoped [Container].
+  /// Disposes of the request-scoped [Container] and cleans up temporary files.
   Future<void> dispose() async {
+    for (var file in request.files.values) {
+      try {
+        await file.delete();
+      } catch (_) {
+        // Best effort cleanup
+      }
+    }
     await container.dispose();
   }
 }
