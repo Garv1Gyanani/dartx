@@ -6,24 +6,29 @@ import 'adapter.dart';
 /// 
 /// The active [DatabaseExecutor] is registered in the request-scoped [Container],
 /// allowing any service resolved during this request to participate in the
-/// same transaction. The transaction is automatically committed on success
-/// and rolled back on exception.
+/// same transaction.
+/// 
+/// **Behavior:**
+/// - **On success**: The transaction is automatically committed.
+/// - **On exception**: The transaction is automatically rolled back, and the
+///   exception propagates to the error handler.
+/// 
+/// **Usage in controllers:**
+/// ```dart
+/// // The executor is the active transaction
+/// final tx = ctx.resolve<DatabaseExecutor>();
+/// await tx.query('INSERT INTO ...');
+/// ```
 Middleware transactionMiddleware() {
   return (Context ctx, Next next) async {
     final db = ctx.resolve<DatabaseAdapter>();
     
-    try {
-      return await db.transaction((tx) async {
-        // Register the active transaction in the request-scoped container.
-        // This allows services resolved within this request to use the same transaction.
-        ctx.container.registerInstance<DatabaseExecutor>(tx);
-        
-        return await next();
-      });
-    } catch (e) {
-      // Re-throw to let the Exception Transformer handle it.
-      // The db.transaction() will handle the rollback automatically on exception.
-      rethrow;
-    }
+    return await db.transaction((tx) async {
+      // Register the active transaction executor in the request-scoped container.
+      // Any QueryBuilder or service that resolves DatabaseExecutor will use this transaction.
+      ctx.container.registerInstance<DatabaseExecutor>(tx);
+      
+      return await next();
+    });
   };
 }

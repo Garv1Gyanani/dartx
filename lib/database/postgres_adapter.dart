@@ -40,7 +40,8 @@ class PostgresAdapter implements DatabaseAdapter, Disposable {
         );
 
   @override
-  QueryBuilder table(String name) => QueryBuilder(name, this);
+  QueryBuilder table(String name, [DatabaseExecutor? executor]) => 
+    QueryBuilder(name, executor ?? this);
 
   @override
   Future<void> connect() async {
@@ -61,14 +62,6 @@ class PostgresAdapter implements DatabaseAdapter, Disposable {
     });
   }
 
-  @override
-  Future<DatabaseExecutor> beginTransaction() async {
-    throw UnsupportedError(
-      'Manual beginTransaction() is not supported by Postgres v3 Pool. '
-      'Please use db.transaction((tx) => ...) for safe scoped transactions.'
-    );
-  }
-
   static QueryResult _transformResult(Result result) {
     final rows = result.map((row) => row.toColumnMap()).toList();
     return PostgresQueryResult(rows, result.affectedRows);
@@ -84,6 +77,10 @@ class PostgresAdapter implements DatabaseAdapter, Disposable {
 }
 
 /// Implementation of [DatabaseExecutor] for PostgreSQL sessions/transactions.
+/// 
+/// Transactions are managed by the pool's `run()` scope:
+/// - **Commit**: Automatic when the callback completes successfully.
+/// - **Rollback**: Automatic when the callback throws an exception.
 class PostgresExecutor implements DatabaseExecutor {
   final Session _session;
 
@@ -97,13 +94,9 @@ class PostgresExecutor implements DatabaseExecutor {
   }
 
   @override
-  Future<void> commit() async {
-    // In postgres v3 .run(), commit is automatic if the callback completes.
-  }
-
-  @override
-  Future<void> rollback() async {
-    // In postgres v3 .run(), rollback is automatic if the callback throws.
-    throw Exception('Rollback initiated');
+  Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback) async {
+    // Within a session, we're already in a transaction scope.
+    // Nested transactions use SAVEPOINTs if supported, otherwise just execute inline.
+    return await callback(this);
   }
 }

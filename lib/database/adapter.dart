@@ -10,18 +10,16 @@ abstract class QueryResult {
 }
 
 /// Abstract interface for database drivers.
-abstract class DatabaseAdapter {
+abstract class DatabaseAdapter implements DatabaseExecutor {
   /// Returns a [QueryBuilder] for the specified [name] (table).
-  QueryBuilder table(String name);
-
-  /// Executes a raw [sql] query with optional [params].
-  Future<QueryResult> query(String sql, [Map<String, dynamic>? params]);
+  /// 
+  /// If [executor] is provided, the builder will run queries through it
+  /// (useful for transactions).
+  QueryBuilder table(String name, [DatabaseExecutor? executor]);
 
   /// Executes multiple queries within a single transaction.
+  @override
   Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback);
-
-  /// Manually starts a new transaction.
-  Future<DatabaseExecutor> beginTransaction();
 
   /// Establishes a connection to the database.
   Future<void> connect();
@@ -30,14 +28,11 @@ abstract class DatabaseAdapter {
   Future<void> close();
 }
 
-/// Interface for executing queries within a specific database scope (e.g., a transaction).
+/// Interface for executing queries within a specific database scope.
 abstract class DatabaseExecutor {
   /// Executes a raw [sql] query within this executor's scope.
   Future<QueryResult> query(String sql, [Map<String, dynamic>? params]);
-
-  /// Commits all pending changes in this scope.
-  Future<void> commit();
-
-  /// Reverts all pending changes in this scope.
-  Future<void> rollback();
+  
+  /// Executes multiple queries within a single transaction.
+  Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback);
 }
