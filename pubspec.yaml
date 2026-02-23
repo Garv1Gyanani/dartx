@@ -1,6 +1,6 @@
 name: kronix
 description: A high-performance, architecturally hardened web framework for Dart.
-version: 0.1.4
+version: 0.1.5
 homepage: https://github.com/garv/kronix
 repository: https://github.com/garv/kronix
 issue_tracker: https://github.com/garv/kronix/issues

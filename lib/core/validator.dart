@@ -105,7 +105,21 @@ class Validator {
     final Map<String, List<String>> errors = {};
     final Map<String, dynamic> validatedData = {};
 
+    // 1. Expand wildcards (e.g. items.*.name)
+    final expandedRules = <String, String>{};
     for (final entry in rules.entries) {
+      if (entry.key.contains('*')) {
+        final matches = _expandWildcardPath(data, entry.key);
+        for (final match in matches) {
+          expandedRules[match] = entry.value;
+        }
+      } else {
+        expandedRules[entry.key] = entry.value;
+      }
+    }
+
+    // 2. Process all rules (including expanded ones)
+    for (final entry in expandedRules.entries) {
       final field = entry.key;
       final ruleString = entry.value;
       final fieldRules = ruleString.split('|');
@@ -148,13 +162,61 @@ class Validator {
     return ValidationResult(errors, validatedData);
   }
 
-  static dynamic _getNestedValue(Map<String, dynamic> data, String path) {
-    if (!path.contains('.')) return data[path];
+  /// Expands a wildcard path into concrete paths based on the [data].
+  /// E.g. "items.*.name" -> ["items.0.name", "items.1.name"]
+  static List<String> _expandWildcardPath(dynamic data, String path) {
+    if (!path.contains('*')) return [path];
+
+    final segments = path.split('.');
+    List<String> results = [''];
+
+    for (int i = 0; i < segments.length; i++) {
+      final segment = segments[i];
+      final List<String> nextResults = [];
+
+      for (final currentPath in results) {
+        final prefix = currentPath.isEmpty ? '' : '$currentPath.';
+        
+        if (segment == '*') {
+          // Resolve actual data to see how many items we have
+          final resolved = _getNestedValue(data, currentPath);
+          if (resolved is List) {
+            for (int index = 0; index < resolved.length; index++) {
+              nextResults.add('$prefix$index');
+            }
+          }
+        } else {
+          nextResults.add('$prefix$segment');
+        }
+      }
+      results = nextResults;
+    }
+
+    return results;
+  }
+
+  static dynamic _getNestedValue(dynamic data, String path) {
+    if (path.isEmpty) return data;
+    if (!path.contains('.')) {
+      if (data is Map) return data[path];
+      if (data is List) {
+        final index = int.tryParse(path);
+        if (index != null && index >= 0 && index < data.length) return data[index];
+      }
+      return null;
+    }
     
     dynamic current = data;
     for (final segment in path.split('.')) {
       if (current is Map && current.containsKey(segment)) {
         current = current[segment];
+      } else if (current is List) {
+        final index = int.tryParse(segment);
+        if (index != null && index >= 0 && index < current.length) {
+          current = current[index];
+        } else {
+          return null;
+        }
       } else {
         return null;
       }
@@ -169,12 +231,33 @@ class Validator {
     }
 
     final segments = path.split('.');
-    Map<String, dynamic> current = data;
+    dynamic current = data;
     for (int i = 0; i < segments.length - 1; i++) {
       final segment = segments[i];
-      current = current.putIfAbsent(segment, () => <String, dynamic>{});
+      final nextSegment = segments[i + 1];
+      final isNextIndex = int.tryParse(nextSegment) != null;
+
+      if (current is Map) {
+        current = current.putIfAbsent(segment, () => isNextIndex ? [] : <String, dynamic>{});
+      } else if (current is List) {
+        final index = int.parse(segment);
+        while (current.length <= index) {
+          current.add(isNextIndex ? [] : <String, dynamic>{});
+        }
+        current = current[index];
+      }
     }
-    current[segments.last] = value;
+
+    final lastSegment = segments.last;
+    if (current is Map) {
+      current[lastSegment] = value;
+    } else if (current is List) {
+      final index = int.parse(lastSegment);
+      while (current.length <= index) {
+        current.add(null);
+      }
+      current[index] = value;
+    }
   }
 
   static dynamic _coerceValue(dynamic value, List<String> rules) {

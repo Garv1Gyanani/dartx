@@ -107,8 +107,8 @@ class Logger {
   /// Logs a [debug] message.
   void debug(String message, [Map<String, dynamic>? data]) => _log(LogLevel.debug, message, data);
 
-  /// Logs a [warn] message.
-  void warn(String message, [Map<String, dynamic>? data]) => _log(LogLevel.warn, message, data);
+  /// Logs a [warning] message.
+  void warning(String message, [Map<String, dynamic>? data]) => _log(LogLevel.warn, message, data);
 
   /// Logs an [error] message with optional [error] and [stackTrace].
   void error(String message, {Object? error, StackTrace? stackTrace, Map<String, dynamic>? data}) {
@@ -127,7 +127,7 @@ class Logger {
       Logger().error(message, error: error, stackTrace: stackTrace, data: data);
 
   /// Static helper for logging a warning.
-  static void staticWarn(String message, [Map<String, dynamic>? data]) => 
+  static void staticWarning(String message, [Map<String, dynamic>? data]) => 
       Logger()._log(LogLevel.warn, message, data);
 
   /// Static helper for logging debug info.

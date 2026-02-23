@@ -10,7 +10,6 @@ export 'core/exception_handler.dart';
 export 'http/request.dart';
 export 'http/response.dart';
 export 'di/container.dart';
-export 'orm/model.dart';
 export 'auth/jwt.dart';
 export 'plugins/plugin_base.dart';
 export 'plugins/rate_limiter.dart';

@@ -1,0 +1,18 @@
+00:00 +0: loading test/stress_test.dart
+00:00 +0: Kronix Stress Test Suite Extreme Load Performance (1,000,000 Requests)
+🚀 STARTING MEGA STRESS TEST: 1,000,000 requests...
+ℹ️  Batch size: 1000 | Targeted throughput: ~500 req/s
+00:07 +0 -1: Kronix Stress Test Suite Extreme Load Performance (1,000,000 Requests) [E]
+  ClientException with SocketException: A request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using a sendto call) no address was supplied (OS Error: A request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using a sendto call) no address was supplied, errno = 10057), address = localhost, port = 49176, uri=http://localhost:49421/fast
+  package:http/src/io_client.dart 227:7    IOClient.send
+  ===== asynchronous gap ===========================
+  package:http/src/base_client.dart 93:32  BaseClient._sendUnstreamed
+  ===== asynchronous gap ===========================
+  package:http/http.dart 170:12            _withClient
+  ===== asynchronous gap ===========================
+  test\stress_test.dart 188:23             main.<fn>.<fn>
+  
+00:07 +0 -1: Some tests failed.
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.

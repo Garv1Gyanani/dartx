@@ -86,7 +86,7 @@ class Context {
   }
 
   Map<String, dynamic> get params => request.params;
-  Map<String, dynamic> get query => request.query;
+  Map<String, dynamic> get queryParams => request.query;
   Map<String, dynamic> get body => request.body;
 
   /// Retrieves the global [WebSocketHub] from the [Container].

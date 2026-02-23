@@ -66,7 +66,7 @@ class App {
     ));
     
     // Resolve Queue driver from config
-    final queueDriverName = Config.get('QUEUE_DRIVER', 'memory');
+    final queueDriverName = Config.get('QUEUE_DRIVER', 'memory')!;
     final QueueDriver driver = _resolveQueueDriver(queueDriverName);
     di.singleton<Queue>(Queue(driver: driver));
 

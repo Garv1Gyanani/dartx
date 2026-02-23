@@ -121,12 +121,34 @@ class MockHttpHeaders implements HttpHeaders {
 
 class MockDB extends DatabaseAdapter {
   final List<String> history = [];
-  @override Future<QueryResult> query(String sql, [Map<String, dynamic>? params]) async {
+  
+  @override
+  Future<QueryResult> query(String sql, [Map<String, dynamic>? params]) async {
     history.add(sql);
     if (sql.contains('SELECT MAX(batch)')) return MockQueryResult([{'max_batch': 0}]);
+    if (sql.contains('SELECT name FROM migrations')) return MockQueryResult([]);
+    if (sql.contains('pg_try_advisory_lock')) return MockQueryResult([{'acquired': true}]);
     return MockQueryResult([]);
   }
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback) async {
+    return await callback(this);
+  }
+
+  @override
+  QueryBuilder table(String name, [DatabaseExecutor? executor]) {
+    return QueryBuilder(name, executor ?? this);
+  }
+
+  @override
+  Future<void> connect() async {}
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class MockQueryResult implements QueryResult {
@@ -136,6 +158,6 @@ class MockQueryResult implements QueryResult {
 }
 
 class MockMigration extends Migration {
-  @override Future<void> up(DatabaseAdapter db) async {}
-  @override Future<void> down(DatabaseAdapter db) async {}
+  @override Future<void> up(DatabaseExecutor db) async {}
+  @override Future<void> down(DatabaseExecutor db) async {}
 }
