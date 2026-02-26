@@ -1,3 +1,6 @@
+import 'adapter.dart';
+import 'query_builder.dart';
+
 /// Base class for database-backed models in Kronix.
 /// 
 /// Models provide a type-safe bridge between Dart objects and database rows.
@@ -43,7 +46,95 @@ abstract class Model {
   /// Whether to automatically manage `created_at`/`updated_at` columns.
   bool get timestamps => true;
 
+  /// The internal executor used for lazy-loading relationships.
+  DatabaseExecutor? _executor;
+
+  /// Holds the raw database attributes for this model.
+  Map<String, dynamic>? _rawAttributes;
+
   Model({this.id, this.createdAt, this.updatedAt});
+
+  /// Sets the database executor and raw attributes for this model instance.
+  void setRawData(DatabaseExecutor executor, Map<String, dynamic> raw) {
+    _executor = executor;
+    _rawAttributes = raw;
+  }
+
+  /// Returns the database executor, throwing an error if not set.
+  DatabaseExecutor get db {
+    if (_executor == null) {
+      throw StateError('This model instance is not attached to a database executor. '
+          'Relationships can only be loaded on models fetched via ModelQuery.');
+    }
+    return _executor!;
+  }
+
+  /// Retrieves a raw attribute value by [key].
+  dynamic getAttribute(String key) => _rawAttributes?[key];
+
+  // ─── Relationships ──────────────────────────────────────────────
+
+  /// Defines a "Belongs To" relationship.
+  Future<T?> belongsTo<T extends Model>(ModelFactory<T> factory, {String? foreignKey, String? ownerKey}) async {
+    final relatedModelName = T.toString().toLowerCase();
+    final fk = foreignKey ?? '${relatedModelName}_id';
+    final targetKey = ownerKey ?? 'id';
+    
+    final idValue = getAttribute(fk);
+    if (idValue == null) return null;
+
+    // Use a fresh QueryBuilder via the attached executor
+    final row = await QueryBuilder(_inferTableName<T>(), db)
+        .where(targetKey, '=', idValue)
+        .first();
+
+    if (row == null) return null;
+    final model = factory(row);
+    model.setRawData(db, row);
+    return model;
+  }
+
+  /// Defines a "Has Many" relationship.
+  Future<List<T>> hasMany<T extends Model>(ModelFactory<T> factory, {String? foreignKey, String? localKey}) async {
+    final fk = foreignKey ?? '${runtimeType.toString().toLowerCase()}_id';
+    final targetKey = localKey ?? 'id';
+    
+    final idValue = getAttribute(targetKey) ?? id;
+    if (idValue == null) return [];
+
+    final rows = await QueryBuilder(_inferTableName<T>(), db)
+        .where(fk, '=', idValue)
+        .get();
+
+    return rows.map((row) {
+      final m = factory(row);
+      m.setRawData(db, row);
+      return m;
+    }).toList();
+  }
+
+  /// Defines a "Has One" relationship.
+  Future<T?> hasOne<T extends Model>(ModelFactory<T> factory, {String? foreignKey, String? localKey}) async {
+    final fk = foreignKey ?? '${runtimeType.toString().toLowerCase()}_id';
+    final targetKey = localKey ?? 'id';
+    
+    final idValue = getAttribute(targetKey) ?? id;
+    if (idValue == null) return null;
+
+    final row = await QueryBuilder(_inferTableName<T>(), db)
+        .where(fk, '=', idValue)
+        .first();
+
+    if (row == null) return null;
+    final model = factory(row);
+    model.setRawData(db, row);
+    return model;
+  }
+
+  static String _inferTableName<T>() {
+    final name = T.toString().toLowerCase();
+    return '${name}s';
+  }
 
   /// Converts this model's fields to a database-compatible map.
   /// 

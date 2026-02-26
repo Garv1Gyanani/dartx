@@ -12,39 +12,48 @@ void main(List<String> args) {
     ..addCommand('make:middleware')
     ..addCommand('make:request')
     ..addCommand('make:migration')
-    ..addCommand('make:model')
+    ..addCommand('make:model', ArgParser()..addFlag('migration', abbr: 'm', negatable: false))
     ..addCommand('migrate')
     ..addCommand('migrate:rollback')
-    ..addCommand('watch');
+    ..addCommand('route:list')
+    ..addCommand('watch', ArgParser()..addOption('target', abbr: 't', defaultsTo: 'bin/server.dart'));
 
-  final results = parser.parse(args);
+  late ArgResults results;
+  try {
+    results = parser.parse(args);
+  } catch (e) {
+    print('Error: $e');
+    _printUsage();
+    return;
+  }
 
   if (results.command == null) {
     _printUsage();
     return;
   }
 
-  switch (results.command!.name) {
+  final cmd = results.command!;
+  switch (cmd.name) {
     case 'create':
-      _createApp(results.command!.rest);
+      _createApp(cmd.rest);
       break;
     case 'make:controller':
-      _generateComponent(results.command!.rest, 'controller', 'app/controllers', Templates.controller);
+      _generateComponent(cmd.rest, 'controller', 'app/controllers', Templates.controller);
       break;
     case 'make:service':
-      _generateComponent(results.command!.rest, 'service', 'app/services', Templates.service);
+      _generateComponent(cmd.rest, 'service', 'app/services', Templates.service);
       break;
     case 'make:middleware':
-      _generateComponent(results.command!.rest, 'middleware', 'app/middleware', Templates.middleware);
+      _generateComponent(cmd.rest, 'middleware', 'app/middleware', Templates.middleware);
       break;
     case 'make:request':
-      _generateComponent(results.command!.rest, 'request', 'app/requests', Templates.request);
+      _generateComponent(cmd.rest, 'request', 'app/requests', Templates.request);
       break;
     case 'make:migration':
-      _generateMigration(results.command!.rest);
+      _generateMigration(cmd.rest);
       break;
     case 'make:model':
-      _generateComponent(results.command!.rest, 'model', 'app/models', Templates.model);
+      _generateModel(cmd);
       break;
     case 'migrate':
       _runMigrations(rollback: false);
@@ -52,11 +61,14 @@ void main(List<String> args) {
     case 'migrate:rollback':
       _runMigrations(rollback: true);
       break;
+    case 'route:list':
+      _listRoutes();
+      break;
     case 'watch':
-      _watch(results.command!.rest);
+      _watch(cmd['target']);
       break;
     default:
-      print('Unknown command: ${results.command!.name}');
+      print('Unknown command: ${cmd.name}');
   }
 }
 
@@ -69,10 +81,11 @@ void _printUsage() {
   print('  make:middleware <N> Create a new middleware');
   print('  make:request <N>    Create a new request validation class');
   print('  make:migration <N>  Create a new database migration');
-  print('  make:model <N>       Create a new model');
+  print('  make:model <N> [-m] Create a new model (optional: create migration)');
   print('  migrate             Run pending migrations');
   print('  migrate:rollback    Rollback last migration batch');
-  print('  watch [file]        Run with hot reload');
+  print('  route:list          List all registered routes');
+  print('  watch [-t target]   Run with hot reload (default target: bin/server.dart)');
 }
 
 void _createApp(List<String> args) {
@@ -114,7 +127,7 @@ void _createApp(List<String> args) {
   print('\nNext steps:');
   print('  cd $name');
   print('  dart pub get');
-  print('  kronix watch bin/server.dart');
+  print('  kronix watch');
 }
 
 void _generateMigration(List<String> args) {
@@ -127,8 +140,30 @@ void _generateMigration(List<String> args) {
   final fileName = '${timestamp}_${name.toLowerCase()}.dart';
   final path = 'database/migrations/$fileName';
 
-  _writeFile(path, Templates.migration(name));
-  print('✨ Created migration: $name at $path');
+  // Format className: create_users_table -> CreateUsersTable
+  final className = name.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join('');
+
+  _writeFile(path, Templates.migration(className));
+  print('✨ Created migration: $className at $path');
+}
+
+void _generateModel(ArgResults cmd) {
+  if (cmd.rest.isEmpty) {
+    print('Error: Please specify model name');
+    return;
+  }
+  final name = cmd.rest[0];
+  _generateComponent([name], 'model', 'app/models', Templates.model);
+
+  if (cmd['migration'] == true) {
+    final tableName = '${name.toLowerCase()}s';
+    _generateMigration(['create_${tableName}_table']);
+  }
+}
+
+void _listRoutes() {
+  print('ℹ️  Listing routes requires booting the app. This feature is coming soon!');
+  print('Tip: Check your routes/api.dart file.');
 }
 
 void _generateComponent(List<String> args, String type, String folder, String Function(String) template) {
@@ -149,7 +184,11 @@ void _createDir(String path) {
 }
 
 void _writeFile(String path, String content) {
-  File(path).writeAsStringSync(content);
+  final file = File(path);
+  if (!file.parent.existsSync()) {
+    file.parent.createSync(recursive: true);
+  }
+  file.writeAsStringSync(content);
 }
 
 void _runMigrations({bool rollback = false}) async {

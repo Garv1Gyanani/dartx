@@ -120,13 +120,20 @@ class ModelQuery<T extends Model> {
   /// Executes the query and returns all matching models.
   Future<List<T>> get() async {
     final rows = await _builder.get();
-    return rows.map(_factory).toList();
+    return rows.map((row) {
+      final model = _factory(row);
+      model.setRawData(_executor, row);
+      return model;
+    }).toList();
   }
 
   /// Returns the first matching model, or `null` if none found.
   Future<T?> first() async {
     final row = await _builder.first();
-    return row != null ? _factory(row) : null;
+    if (row == null) return null;
+    final model = _factory(row);
+    model.setRawData(_executor, row);
+    return model;
   }
 
   /// Finds a model by its primary key [id].
@@ -134,7 +141,10 @@ class ModelQuery<T extends Model> {
     final row = await QueryBuilder(_tableName, _executor)
         .where('id', '=', id)
         .first();
-    return row != null ? _factory(row) : null;
+    if (row == null) return null;
+    final model = _factory(row);
+    model.setRawData(_executor, row);
+    return model;
   }
 
   /// Finds a model by primary key or throws if not found.
@@ -178,7 +188,12 @@ class ModelQuery<T extends Model> {
         .orderBy('id', 'DESC')
         .first();
 
-    return row != null ? _factory(row) : model;
+    if (row != null) {
+      final created = _factory(row);
+      created.setRawData(_executor, row);
+      return created;
+    }
+    return model;
   }
 
   /// Updates an existing model in the database.

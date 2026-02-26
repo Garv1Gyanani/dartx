@@ -126,22 +126,24 @@ class $name extends Migration {
 import 'package:kronix/kronix.dart';
 
 class $name extends Model {
-  String? name;
+  @override
+  String get tableName => '${name.toLowerCase()}s';
+
+  String? title;
+
+  $name({super.id, this.title, super.createdAt, super.updatedAt});
+
+  factory $name.fromRow(Map<String, dynamic> row) => $name(
+    id: row['id'],
+    title: row['title'],
+    createdAt: row['created_at'],
+    updatedAt: row['updated_at'],
+  );
 
   @override
-  String get table => '${name.toLowerCase()}s';
-
-  @override
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
+  Map<String, dynamic> toMap() => {
+    'title': title,
   };
-
-  @override
-  void fromJson(Map<String, dynamic> json) {
-    id = json['id'] as int?;
-    name = json['name'] as String?;
-  }
 }
 ''';
 
