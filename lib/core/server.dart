@@ -479,6 +479,11 @@ class App {
           res.headers.set(entry.key, entry.value);
         }
       }
+
+      // Apply cookies
+      for (final cookie in response.cookies) {
+        res.headers.add(HttpHeaders.setCookieHeader, cookie);
+      }
       
       // Write body with type detection
       if (response.body != null) {

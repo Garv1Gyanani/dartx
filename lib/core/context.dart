@@ -10,6 +10,7 @@ import '../database/model_query.dart';
 import 'validator.dart';
 import 'exceptions.dart';
 import 'websocket.dart';
+import '../session/session.dart';
 import '../filesystem/storage.dart';
 import '../queue/queue.dart';
 
@@ -33,10 +34,17 @@ class Context {
   /// A unique 8-character identifier for this request, used for log correlation.
   final String requestId;
   final Stopwatch _stopwatch = Stopwatch()..start();
+  final Map<String, dynamic> _data = {};
   Response? _response;
 
   Context(this.request, {required this.container}) 
     : requestId = _generateRequestId();
+
+  /// Sets a value in the request-scoped data storage.
+  void set(String key, dynamic value) => _data[key] = value;
+
+  /// Retrieves a value from the request-scoped data storage.
+  T? get<T>(String key) => _data[key] as T?;
 
   static String _generateRequestId() {
     final rnd = Random();
@@ -118,6 +126,15 @@ class Context {
   Map<String, dynamic> get params => request.params;
   Map<String, dynamic> get queryParams => request.query;
   Map<String, dynamic> get body => request.body;
+
+  /// Returns the user session, if SessionMiddleware is active.
+  Session get session {
+    final s = get<Session>('session');
+    if (s == null) {
+      throw StateError('Session is not initialized. Ensure SessionMiddleware is registered.');
+    }
+    return s;
+  }
 
   /// Helper to get a path parameter as an integer.
   int? paramInt(String key, [int? defaultValue]) => request.paramInt(key, defaultValue);

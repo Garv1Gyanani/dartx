@@ -18,6 +18,8 @@ dependencies:
   mime: ^2.0.0
   test: ^1.26.3
   http: ^1.2.0
+  redis: ^3.1.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   lints: ^5.1.1
