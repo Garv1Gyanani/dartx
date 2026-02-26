@@ -28,7 +28,7 @@ final app = App();
 app.group('/api/v1', callback: (router) {
   // Named parameter and group prefix
   router.get('/products/:id', (ctx) async {
-    final id = ctx.params['id'];
+    final id = ctx.paramInt('id'); // Type-safe casting
     return ctx.json({'id': id});
   });
 });
@@ -145,3 +145,14 @@ final isProd = Config.get('APP_ENV') == 'production';
 
 ## 🚪 9. Graceful Shutdown
 Supports `SIGINT`/`SIGTERM` to safely close database pools and finish pending requests before exiting.
+
+---
+
+## 📁 10. Static File Serving
+Efficient, zero-copy (where possible) streaming of local files.
+
+```dart
+app.get('/', (ctx) async => ctx.file('public/index.html'));
+app.get('/download', (ctx) async => ctx.download('files/guide.pdf'));
+```
+
