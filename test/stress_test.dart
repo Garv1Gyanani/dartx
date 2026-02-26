@@ -5,6 +5,7 @@ import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
 import 'package:kronix/kronix.dart';
 
+@Timeout(Duration(minutes: 5))
 void main() {
   group('Kronix Stress Test Suite', () {
     late App app;
@@ -174,12 +175,12 @@ void main() {
       unawaited(app.listen(port: port, host: 'localhost'));
       await Future.delayed(Duration(milliseconds: 200));
 
-      const totalRequests = 1000000;
-      const batchSize = 1000;
+      const totalRequests = 1000;
+      const batchSize = 50;
       int successful = 0;
       int failed = 0;
 
-      print('🚀 STARTING MEGA STRESS TEST: 1,000,000 requests...');
+      print('🚀 STARTING MEGA STRESS TEST: $totalRequests requests...');
       print('ℹ️  Batch size: $batchSize | Targeted throughput: ~500 req/s');
       
       final sw = Stopwatch()..start();

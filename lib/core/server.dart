@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' hide HttpException;
 import 'dart:convert';
 import 'dart:async';
 import 'router.dart';
@@ -6,6 +6,7 @@ import 'middleware.dart';
 import 'context.dart';
 import 'logger.dart';
 import 'config.dart';
+import 'exceptions.dart';
 import 'exception_handler.dart';
 import '../di/container.dart';
 import '../http/request.dart';
@@ -28,6 +29,7 @@ class App {
   final WebSocketHub _wsHub = WebSocketHub();
   HttpServer? _server;
   bool _isShuttingDown = false;
+  bool _isStarted = false;
   int _activeHttpCounter = 0;
   int _activeWSCounter = 0;
 
@@ -96,45 +98,69 @@ class App {
 
   /// Registers a global [middleware] to be executed for every request.
   void use(Middleware middleware) {
+    _ensureNotStarted();
     _pipeline.use(middleware);
+  }
+
+  void _ensureNotStarted() {
+    if (_isStarted) {
+      throw StateError('Cannot register routes or middleware after the server has started.');
+    }
   }
 
   /// Groups routes under a common [prefix] with optional [middleware].
   void group(String prefix, {List<Middleware> middleware = const [], required void Function(Router) callback}) {
+    _ensureNotStarted();
     _router.group(prefix, middleware: middleware, callback: callback);
   }
 
   /// Registers a GET route.
-  RouteData get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('GET', path, handler, middleware: middleware, name: name);
+  RouteData get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.add('GET', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers a POST route.
-  RouteData post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('POST', path, handler, middleware: middleware, name: name);
+  RouteData post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+     _ensureNotStarted();
+     return _router.add('POST', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers a PUT route.
-  RouteData put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('PUT', path, handler, middleware: middleware, name: name);
+  RouteData put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.add('PUT', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers a DELETE route.
-  RouteData delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('DELETE', path, handler, middleware: middleware, name: name);
+  RouteData delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.add('DELETE', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers a PATCH route.
-  RouteData patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('PATCH', path, handler, middleware: middleware, name: name);
+  RouteData patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.add('PATCH', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers a HEAD route.
-  RouteData head(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('HEAD', path, handler, middleware: middleware, name: name);
+  RouteData head(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.add('HEAD', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers an OPTIONS route.
-  RouteData options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.add('OPTIONS', path, handler, middleware: middleware, name: name);
+  RouteData options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.add('OPTIONS', path, handler, middleware: middleware, name: name);
+  }
 
   /// Registers a WebSocket endpoint at the specified [path].
-  RouteData ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) => 
-    _router.ws(path, handler, middleware: middleware, name: name);
+  RouteData ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) {
+    _ensureNotStarted();
+    return _router.ws(path, handler, middleware: middleware, name: name);
+  }
 
   /// Starts the HTTP/WebSocket server and listens for incoming requests.
   Future<void> listen({int? port, String? host}) async {
@@ -143,6 +169,7 @@ class App {
     
     try {
       _server = await HttpServer.bind(serverHost, serverPort, shared: true);
+      _isStarted = true;
       Logger.staticInfo('🚀 Server started on http://$serverHost:$serverPort');
     } catch (e) {
       if (e is SocketException && (e.osError?.errorCode == 10048 || e.osError?.errorCode == 98)) {
@@ -281,6 +308,14 @@ class App {
       ctx = Context(request, container: requestContainer);
       final logger = Logger.withContext(ctx);
 
+      // Security: Enforce global max body size if not already handled by multipart
+      if (!isWebSocket && rawRequest.headers.contentLength > 0) {
+        final maxBodySize = Config.getInt('MAX_BODY_SIZE', 10 * 1024 * 1024)!; // 10MB default
+        if (rawRequest.headers.contentLength > maxBodySize) {
+          throw HttpException(413, 'Payload Too Large');
+        }
+      }
+
       if (isWebSocket && routeData.isWebSocket) {
         isWSUpgradeHandled = true;
         // WS keeps the counter and context until socket is closed
@@ -289,11 +324,10 @@ class App {
       }
 
       final response = await _pipeline.exec(ctx, (lvlCtx) async {
-        final routePipeline = Pipeline();
-        for (var m in routeData.middleware) {
-          routePipeline.use(m);
+        if (routeData.compiledHandler != null) {
+          return await routeData.compiledHandler!(lvlCtx);
         }
-        return await routePipeline.exec(lvlCtx, routeData.handler!);
+        return await routeData.handler!(lvlCtx);
       });
       
       await _sendResponse(rawRequest, ctx, response, logger);
@@ -373,12 +407,12 @@ class App {
     final files = <String, UploadedFile>{};
 
     if (mimeType == 'application/json') {
-      final content = await utf8.decodeStream(request);
+      final content = await _readStringWithLimit(request);
       if (content.isNotEmpty) {
         body.addAll(jsonDecode(content));
       }
     } else if (mimeType == 'application/x-www-form-urlencoded') {
-      final content = await utf8.decodeStream(request);
+      final content = await _readStringWithLimit(request);
       if (content.isNotEmpty) {
         body.addAll(Uri.splitQueryString(content));
       }
@@ -446,11 +480,27 @@ class App {
       }
     } else {
        // Default to raw content if unknown
-       final content = await utf8.decodeStream(request);
+       final content = await _readStringWithLimit(request);
        body['_raw'] = content;
     }
 
     return (body, files);
+  }
+
+  Future<String> _readStringWithLimit(HttpRequest request) async {
+    final maxBodySize = Config.getInt('MAX_BODY_SIZE', 10 * 1024 * 1024)!; 
+    final bytes = <int>[];
+    int totalBytes = 0;
+
+    await for (final chunk in request) {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBodySize) {
+        throw HttpException(413, 'Payload Too Large (Limit: $maxBodySize bytes)');
+      }
+      bytes.addAll(chunk);
+    }
+    
+    return utf8.decode(bytes);
   }
 
   Future<void> _sendResponse(HttpRequest rawRequest, Context ctx, Response response, Logger logger) async {

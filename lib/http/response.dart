@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:collection';
 
 /// Represents an outgoing HTTP response from the Kronix framework.
 class Response {
@@ -20,7 +21,7 @@ class Response {
     this.body,
     Map<String, String>? headers,
     List<String>? cookies,
-  })  : headers = headers ?? {'content-type': 'text/plain'},
+  })  : headers = _CaseInsensitiveMap(headers ?? {'content-type': 'text/plain'}),
         _cookies = cookies ?? [];
 
   List<String> get cookies => _cookies;
@@ -29,25 +30,25 @@ class Response {
   Response.json(dynamic data, {int status = 200})
       : statusCode = status,
         body = jsonEncode(data),
-        headers = {'content-type': 'application/json'},
+        headers = _CaseInsensitiveMap({'content-type': 'application/json'}),
         _cookies = [];
 
   /// Creates an HTML response with the provided [html] string and status code.
   Response.html(String html, {int status = 200})
       : statusCode = status,
         body = html,
-        headers = {'content-type': 'text/html'},
+        headers = _CaseInsensitiveMap({'content-type': 'text/html'}),
         _cookies = [];
 
   Response.ok(this.body)
       : statusCode = 200,
-        headers = {'content-type': 'text/plain'},
+        headers = _CaseInsensitiveMap({'content-type': 'text/plain'}),
         _cookies = [];
 
   Response.redirect(String url, {int status = 302})
       : statusCode = status,
         body = null,
-        headers = {'location': url},
+        headers = _CaseInsensitiveMap({'location': url}),
         _cookies = [];
 
   /// Creates a copy of this response with additional/replaced headers.
@@ -69,4 +70,20 @@ class Response {
       cookies: [..._cookies, cookie],
     );
   }
+}
+
+class _CaseInsensitiveMap with MapMixin<String, String> {
+  final Map<String, String> _inner = {};
+
+  _CaseInsensitiveMap([Map<String, String>? initial]) {
+    if (initial != null) {
+      initial.forEach((key, value) => _inner[key.toLowerCase()] = value);
+    }
+  }
+
+  @override String? operator [](Object? key) => _inner[key.toString().toLowerCase()];
+  @override void operator []=(String key, String value) => _inner[key.toLowerCase()] = value;
+  @override void clear() => _inner.clear();
+  @override Iterable<String> get keys => _inner.keys;
+  @override String? remove(Object? key) => _inner.remove(key.toString().toLowerCase());
 }

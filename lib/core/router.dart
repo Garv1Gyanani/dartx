@@ -40,6 +40,9 @@ class RouteData {
   /// Arbitrary metadata for the route (e.g., tags, security requirements).
   final Map<String, dynamic> metadata = {};
 
+  /// Pre-built execution chain for this route.
+  Handler? _compiledHandler;
+
   /// Creates a new [RouteData] instance.
   RouteData({
     this.handler,
@@ -49,6 +52,16 @@ class RouteData {
     required this.method,
     required this.path,
   });
+
+  /// Compiles the route's middleware into a single executable chain.
+  void compile() {
+    if (handler != null) {
+      _compiledHandler = Pipeline.compose(middleware, handler!);
+    }
+  }
+
+  /// Returns the pre-compiled execution chain.
+  Handler? get compiledHandler => _compiledHandler;
 
   /// Returns `true` if this route is a WebSocket entry point.
   bool get isWebSocket => wsHandler != null;
@@ -177,6 +190,7 @@ class Router {
       }
     }
     
+    data.compile();
     current.handlers[method.toUpperCase()] = data;
   }
 
