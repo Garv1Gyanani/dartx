@@ -104,3 +104,22 @@ app.use((ctx, next) async {
   return await next();
 });
 ```
+
+---
+
+## 📂 7. Efficient Static File Serving
+
+**The Challenge:**
+Manual file reading (e.g., `File().readAsString()`) is memory-intensive for large files and requires manual MIME type detection.
+
+**The Solution:**
+Kronix now supports efficient streaming via `ctx.file()`. It automatically handles MIME types and streams the file directly to the response socket.
+
+```dart
+// Serve an index file
+app.get('/', (ctx) async => ctx.file('public/index.html'));
+
+// Force a download
+app.get('/report', (ctx) async => ctx.download('storage/report.pdf', 'Monthly_Report.pdf'));
+```
+

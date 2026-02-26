@@ -480,9 +480,15 @@ class App {
         }
       }
       
-      // Write body as UTF-8 bytes to avoid latin1 encoding errors
+      // Write body with type detection
       if (response.body != null) {
-        res.add(utf8.encode(response.body.toString()));
+        if (response.body is List<int>) {
+          res.add(response.body as List<int>);
+        } else if (response.body is Stream<List<int>>) {
+          await res.addStream(response.body as Stream<List<int>>);
+        } else {
+          res.add(utf8.encode(response.body.toString()));
+        }
       }
       await res.close();
       

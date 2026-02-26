@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:math';
+import 'package:mime/mime.dart';
 import '../http/request.dart';
 import '../http/response.dart';
 import '../di/container.dart';
@@ -83,6 +85,34 @@ class Context {
 
   Response redirect(String url, {int status = 302}) {
     return Response.redirect(url, status: status);
+  }
+
+  /// Serves a file from the local filesystem.
+  /// 
+  /// Automatically detects the content-type and uses efficient streaming.
+  Response file(String path) {
+    final f = File(path);
+    if (!f.existsSync()) {
+      return json({'message': 'File not found'}, status: 404);
+    }
+
+    final mimeType = lookupMimeType(path) ?? 'application/octet-stream';
+    return Response(
+      body: f.openRead(),
+      statusCode: 200,
+      headers: {'content-type': mimeType},
+    );
+  }
+
+  /// Forces a file download by setting the Content-Disposition header.
+  Response download(String path, [String? filename]) {
+    final res = file(path);
+    if (res.statusCode != 200) return res;
+
+    final name = filename ?? path.split(Platform.pathSeparator).last;
+    return res.withHeaders({
+      'content-disposition': 'attachment; filename="$name"',
+    });
   }
 
   Map<String, dynamic> get params => request.params;
