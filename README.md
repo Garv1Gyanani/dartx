@@ -1,132 +1,119 @@
-# 🚀 Kronix Framework
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Garv1Gyanani/dartx/main/assets/kronix_logo.png" width="300" alt="Kronix Logo">
+</p>
 
-[![Pub Version](https://img.shields.io/pub/v/kronix?color=blue&logo=dart)](https://pub.dev/packages/kronix)
+# 🐍 Kronix
+### The Architecturally Hardened Web Framework for Dart.
+
+[![pub package](https://img.shields.io/pub/v/kronix.svg)](https://pub.dev/packages/kronix)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/Performance-Optimized-brightgreen)](https://github.com/garv/kronix)
 
-**Kronix** is a high-performance, architecturally hardened web framework for Dart. Inspired by the best patterns from Laravel, NestJS, and Go's Gin, it brings enterprise-grade features like **Distributed Queues**, **Type-Safe ORM**, and **Stress-Tested Concurrency** to the Dart ecosystem.
-
----
-
-## 🔥 Key Features
-
-### 1. 🛡️ **Type-Safe Database & ORM**
-*   **Model Base Class**: Automatic ID and timestamp (`created_at`, `updated_at`) management.
-*   **Fluent Schema Builder**: Define migrations declaratively without raw SQL.
-*   **Type-Safe Queries**: `ctx.query<User>(User.fromRow)` returns typed objects, not just maps.
-*   **Atomic Transactions**: Request-scoped database executors with automatic rollback.
-
-### 2. 🏗️ **Architectural Hardening**
-*   **Hierarchical DI**: Parent/Child containers ensure 100% isolation between requests.
-*   **Deterministic Cleanup**: Automatically deletes temp files and closes resources after response.
-*   **Extreme Backpressure**: Configurable concurrency limits (rejection with 503) to prevent server crashes.
-
-### 3. ✅ **Elite Validation Engine**
-*   **Wildcard Support**: Validate complex nested structures like `items.*.price`.
-*   **Clean Data**: Returns coerced and validated data types (booleans, integers) ready for use.
-*   **Form Requests**: Decouple validation logic from controllers.
-
-### 4. 📤 **Enterprise Queue System**
-*   **SKIP LOCKED Dequeue**: Perfectly safe for distributed worker environments.
-*   **Dead Letter Queue**: Built-in persistence for failing jobs with retry tracking.
-*   **Metrics**: Real-time throughput and failure rate monitoring.
+Kronix is a high-performance, batteries-included web framework for the Dart ecosystem. It is designed for developers who demand **speed**, **type-safety**, and **architectural integrity** without the boilerplate of traditional enterprise frameworks.
 
 ---
 
-## 📦 Installation
+## 🚀 Key Features
 
-Add `kronix` to your `pubspec.yaml`:
+- **⚡ Radix-Trie Router**: O(log n) path matching with pre-compiled middleware chains.
+- **🏗️ Sophisticated DI**: Hierarchical Dependency Injection with automatic request scoping.
+- **📦 Advanced ORM**: Active Record pattern with typed relationships (`belongsTo`, `hasMany`).
+- **🛡️ HARDENED Security**: Built-in backpressure control, body size limits, and JWT/Session support.
+- **🚄 Unified Caching**: Elegant `Cache` facade supporting Memory and Redis drivers.
+- **⚙️ CLI Power**: Rapid scaffolding of controllers, models (with migrations), and services.
+- **🚥 Real-time**: First-class WebSocket support with Hubs, Rooms, and Middleware protection.
+
+---
+
+## 🏁 Quick Start
+
+### 1. Installation
+
+Add Kronix to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  kronix: ^0.1.5
+  kronix: ^0.2.0
 ```
 
-Then run:
-```bash
-dart pub get
-```
+### 2. A Simple Server
 
----
-
-## 🏁 Getting Started
-
-### 1. Simple API
 ```dart
 import 'package:kronix/kronix.dart';
 
 void main() async {
   final app = App();
 
-  app.get('/hello', (ctx) async {
-    return ctx.json({'message': 'Hello, Kronix!'});
+  // Basic Route
+  app.get('/welcome', (ctx) async {
+    return Response.json({'message': 'Welcome to Kronix!'});
+  });
+
+  // Typed Validation
+  app.post('/register', (ctx) async {
+    final data = await ctx.validate({
+      'email': 'required|email',
+      'password': 'required|min:8',
+    });
+    
+    return Response.json({'status': 'registered', 'user': data['email']});
   });
 
   await app.listen(port: 3000);
 }
 ```
 
-### 2. Type-Safe Model Interaction
+---
+
+## 🛠️ Deep Dive
+
+### 📦 The ORM (Model)
+Define your relationships easily:
+
 ```dart
 class User extends Model {
   @override String get tableName => 'users';
-  String name;
-
-  User({super.id, required this.name});
-
-  factory User.fromRow(Map<String, dynamic> row) => 
-      User(id: row['id'], name: row['name']);
-
-  @override
-  Map<String, dynamic> toMap() => {'name': name};
-}
-
-// In your controller
-app.get('/users/:id', (ctx) async {
-  final id = ctx.paramInt('id')!;
-  final user = await ctx.query<User>(User.fromRow).find(id);
   
-  return user != null ? ctx.json(user) : ctx.json({'error': 'Not found'}, status: 404);
+  // Relationship: User has many Posts
+  Future<List<Post>> posts() => hasMany<Post>(Post.fromRow);
+}
+```
+
+### 🚄 Caching
+Switch from Memory to Redis with one line in `.env`:
+
+```dart
+// Fetch from cache or compute and store for 1 hour
+final stats = await Cache.remember('users.count', Duration(hours: 1), () async {
+  return await User.query().count();
 });
 ```
 
-### 3. Fluent Migrations
+### 🚥 Middleware
+Compose logic across routes globally or in groups:
+
 ```dart
-class CreateUsersTable extends Migration {
-  @override
-  Future<void> up(DatabaseExecutor db) async {
-    await Schema(db).create('users', (table) {
-      table.id();
-      table.string('name');
-      table.string('email').unique();
-      table.timestamps();
-    });
-  }
-}
+app.group('/api/v1', middleware: [AuthMiddleware()], callback: (router) {
+  router.get('/profile', ProfileController().show);
+});
 ```
 
 ---
 
-## 📚 Documentation
+## 💎 Why Kronix?
 
-Detailed guides for various subsystems:
+In a world of micro-frameworks, Kronix provides the **structure** needed for long-term maintainability. It is not just a router; it's a foundation that handles the "boring" parts of web development—security, concurrency, and data integrity—so you can focus on building your product.
 
-*   [Core Routing & Server](./doc/routing.md)
-*   [Dependency Injection](./doc/dependency-injection.md)
-*   [Database & Migration](./doc/database.md)
-*   [Validation & Form Requests](./doc/validation.md)
-*   [Queue System](./doc/storage.md) <!-- Note: Actually storage is storage, queue is in core usually but let's check -->
-*   [WebSocket Hub](./doc/websockets.md)
-*   [Technical Insights & Best Practices](./doc/implementation_insights.md) 🚀
+- **Drained Gracefully**: Handles `SIGINT`/`SIGTERM` to allow active requests to finish.
+- **Isolated Tests**: Built-in `MockHttpRequest` and container-swapping for 100% test coverage.
+- **Type Casting**: Automatic conversion of query/body parameters to `int`, `double`, or `bool`.
 
 ---
 
-## 📊 Performance Benchmark
-Kronix is built for scale. In our latest **Extreme Load** stress tests:
-- **Concurrency**: Handled **10,000+** requests in a single burst with zero drops.
-- **Throughput**: Peaked at **400+ req/s** on a single-thread local environment.
-- **Draining**: Graceful shutdown drains active connections automatically before exit.
+## 🤝 Contributing
 
----
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) to get started.
 
 ## 📄 License
-Kronix is open-source software licensed under the [MIT license](LICENSE).
+
+Kronix is open-sourced software licensed under the [MIT license](LICENSE).

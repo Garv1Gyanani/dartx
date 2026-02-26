@@ -1,3 +1,13 @@
+# 0.2.0
+
+- **Advanced ORM Relationships** — Native support for `belongsTo`, `hasMany`, and `hasOne`.
+- **Unified Caching Layer** — Fluent `Cache` facade with Memory and Redis drivers.
+- **Native Session Support** — Server-side cookie sessions with `SessionMiddleware`.
+- **CLI Scaffolding 2.0** — `kronix make:model Product -m` now creates migrations automatically.
+- **Middleware Pre-Compilation** — Extreme throughput optimization by pre-building execution chains.
+- **Hardenened Security** — Global request body limits and case-insensitive header handling.
+- **Fixed** OS port exhaustion in high-concurrency stress tests.
+
 # 0.1.5
 
 - **Type-Safe Database Flow** — `ctx.query<User>(User.fromRow)` returns typed model instances.
