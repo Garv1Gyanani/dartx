@@ -51,3 +51,6 @@ class Config {
     _overrides[key] = value.toString();
   }
 }
+
+/// An alias for [Config] for backward compatibility and semantic preference.
+typedef Env = Config;

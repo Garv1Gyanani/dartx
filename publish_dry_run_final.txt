@@ -1,0 +1,149 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 85.0.0 (96.0.0 available)
+  analyzer 7.7.1 (10.2.0 available)
+  lints 5.1.1 (6.1.0 available)
+  matcher 0.12.17 (0.12.18 available)
+  postgres 3.5.7 (3.5.9 available)
+  test 1.26.3 (1.29.0 available)
+  test_api 0.7.7 (0.7.9 available)
+  test_core 0.6.12 (0.6.15 available)
+Got dependencies!
+8 packages have newer versions incompatible with dependency constraints.
+Try `dart pub outdated` for more information.
+Publishing kronix 0.1.5 to https://pub.dev:
+├── CHANGELOG.md (2 KB)
+├── FEATURES.md (3 KB)
+├── KRONIX_OVERVIEW.md (6 KB)
+├── LICENSE (1 KB)
+├── PUBLISHING.md (1 KB)
+├── README.md (3 KB)
+├── analysis_options.yaml (<1 KB)
+├── bin
+│   ├── kronix.dart (7 KB)
+│   └── templates.dart (3 KB)
+├── doc
+│   ├── cli.md (1 KB)
+│   ├── database.md (1 KB)
+│   ├── dependency-injection.md (1 KB)
+│   ├── middleware.md (1 KB)
+│   ├── routing.md (1 KB)
+│   ├── storage.md (2 KB)
+│   ├── validation.md (1 KB)
+│   └── websockets.md (2 KB)
+├── example
+│   ├── enterprise_demo.dart (2 KB)
+│   ├── example.dart (2 KB)
+│   ├── exception_demo.dart (<1 KB)
+│   ├── full_stack_test.dart (2 KB)
+│   ├── main.dart (2 KB)
+│   ├── mega_test.dart (10 KB)
+│   ├── migration_test.dart (2 KB)
+│   ├── orm_demo.dart (2 KB)
+│   ├── task_api.dart (3 KB)
+│   ├── validation_demo.dart (1 KB)
+│   └── websocket_demo.dart (4 KB)
+├── lib
+│   ├── auth
+│   │   └── jwt.dart (1 KB)
+│   ├── controllers
+│   │   └── user_controller.dart (<1 KB)
+│   ├── core
+│   │   ├── config.dart (1 KB)
+│   │   ├── context.dart (4 KB)
+│   │   ├── exception_handler.dart (1 KB)
+│   │   ├── exceptions.dart (1 KB)
+│   │   ├── explorer.dart (2 KB)
+│   │   ├── logger.dart (4 KB)
+│   │   ├── middleware.dart (1 KB)
+│   │   ├── router.dart (7 KB)
+│   │   ├── server.dart (17 KB)
+│   │   ├── validator.dart (10 KB)
+│   │   └── websocket.dart (3 KB)
+│   ├── database
+│   │   ├── adapter.dart (1 KB)
+│   │   ├── middleware.dart (1 KB)
+│   │   ├── migration.dart (<1 KB)
+│   │   ├── migration_runner.dart (5 KB)
+│   │   ├── model.dart (2 KB)
+│   │   ├── model_query.dart (8 KB)
+│   │   ├── postgres_adapter.dart (3 KB)
+│   │   ├── query_builder.dart (8 KB)
+│   │   └── schema.dart (10 KB)
+│   ├── di
+│   │   └── container.dart (4 KB)
+│   ├── filesystem
+│   │   └── storage.dart (2 KB)
+│   ├── http
+│   │   ├── file.dart (4 KB)
+│   │   ├── request.dart (1 KB)
+│   │   └── response.dart (1 KB)
+│   ├── kronix.dart (1 KB)
+│   ├── orm
+│   │   └── model.dart (<1 KB)
+│   ├── plugins
+│   │   ├── cors.dart (1 KB)
+│   │   ├── plugin_base.dart (<1 KB)
+│   │   ├── rate_limiter.dart (1 KB)
+│   │   └── size_limit.dart (<1 KB)
+│   ├── queue
+│   │   ├── database_driver.dart (11 KB)
+│   │   ├── driver.dart (4 KB)
+│   │   ├── job.dart (3 KB)
+│   │   ├── metrics.dart (3 KB)
+│   │   ├── queue.dart (6 KB)
+│   │   └── worker.dart (7 KB)
+│   └── testing
+│       └── fluent_test.dart (4 KB)
+├── publish_dry_run_final.txt (<1 KB)
+├── pubspec.yaml (<1 KB)
+└── test
+    ├── benchmark_suite.dart (4 KB)
+    ├── dx_test.dart (2 KB)
+    ├── file_upload_test.dart (2 KB)
+    ├── queue_test.dart (20 KB)
+    ├── stress_test.dart (8 KB)
+    ├── verification_suite.dart (5 KB)
+    └── websocket_test.dart (4 KB)
+
+Total compressed archive size: 78 KB.
+Validating package...
+Package validation found the following 2 potential issues:
+* `dart analyze` found the following issue(s):
+  Analyzing bin, lib, pubspec.yaml...
+  
+  warning - lib\testing\fluent_test.dart:90:11 - The value of the local variable 'future' isn't used. Try removing the variable or using it. - unused_local_variable
+     info - lib\auth\jwt.dart:15:3 - Constructor declarations should be before non-constructor declarations. Try moving the constructor declaration before all other members. - sort_constructors_first
+     info - lib\controllers\user_controller.dart:3:7 - Missing documentation for a public member. Try [...]i_docs
+     info - lib\testing\fluent_test.dart:118:24 - Missing documentation for a public member. Try adding documentation for the member. - public_member_api_docs
+     info - lib\testing\fluent_test.dart:128:24 - Missing documentation for a public member. Try adding documentation for the member. - public_member_api_docs
+     info - lib\testing\fluent_test.dart:137:14 - Missing documentation for a public member. Try adding documentation for the member. - public_member_api_docs
+  
+  200 issues found.
+  
+
+* 1 checked-in file is ignored by a `.gitignore`.
+  Previous versions of Pub would include those in the published package.
+  
+  Consider adjusting your `.gitignore` files to not ignore those files, and if you do not wish to
+  publish these files use `.pubignore`. See also dart.dev/go/pubignore
+  
+  Files that are checked in while gitignored:
+  
+  storage/storage_test.txt
+  
+  
+
+Package validation found the following hint:
+* The previous version is 0.1.3.
+  
+  It seems you are not publishing an incremental update.
+  
+  Consider one of:
+  * 1.0.0 for a first major release.
+  * 0.2.0 for a breaking release.
+  * 0.1.4 for a minor release.
+  
+The server may enforce additional checks.
+
+Package has 2 warnings and 1 hint.

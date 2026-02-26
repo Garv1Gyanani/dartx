@@ -141,8 +141,19 @@ class App {
     final serverPort = port ?? Config.getInt('PORT', 3000)!;
     final serverHost = host ?? Config.get('HOST', '0.0.0.0')!;
     
-    _server = await HttpServer.bind(serverHost, serverPort);
-    Logger.staticInfo('🚀 Server started on http://$serverHost:$serverPort');
+    try {
+      _server = await HttpServer.bind(serverHost, serverPort, shared: true);
+      Logger.staticInfo('🚀 Server started on http://$serverHost:$serverPort');
+    } catch (e) {
+      if (e is SocketException && (e.osError?.errorCode == 10048 || e.osError?.errorCode == 98)) {
+        Logger.staticError('❌ Port $serverPort is already in use. Please ensure no other instances of the server are running.');
+        // On Windows, errorCode 10048 is "Only one usage of each socket address is normally permitted"
+        // On Linux, errorCode 98 is "Address already in use"
+      } else {
+        Logger.staticError('❌ Failed to start server: $e');
+      }
+      rethrow;
+    }
 
     _handleGracefulShutdown();
 

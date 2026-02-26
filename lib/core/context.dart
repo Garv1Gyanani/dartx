@@ -89,6 +89,18 @@ class Context {
   Map<String, dynamic> get queryParams => request.query;
   Map<String, dynamic> get body => request.body;
 
+  /// Helper to get a path parameter as an integer.
+  int? paramInt(String key, [int? defaultValue]) => request.paramInt(key, defaultValue);
+
+  /// Helper to get a query parameter as an integer.
+  int? queryInt(String key, [int? defaultValue]) => request.queryInt(key, defaultValue);
+
+  /// Helper to get a query parameter as a double.
+  double? queryDouble(String key, [double? defaultValue]) => request.queryDouble(key, defaultValue);
+
+  /// Helper to get a query parameter as a boolean.
+  bool queryBool(String key, [bool defaultValue = false]) => request.queryBool(key, defaultValue);
+
   /// Retrieves the global [WebSocketHub] from the [Container].
   WebSocketHub get wsHub => resolve<WebSocketHub>();
 

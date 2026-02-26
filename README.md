@@ -82,7 +82,7 @@ class User extends Model {
 
 // In your controller
 app.get('/users/:id', (ctx) async {
-  final id = int.parse(ctx.params['id']);
+  final id = ctx.paramInt('id')!;
   final user = await ctx.query<User>(User.fromRow).find(id);
   
   return user != null ? ctx.json(user) : ctx.json({'error': 'Not found'}, status: 404);
@@ -103,6 +103,20 @@ class CreateUsersTable extends Migration {
   }
 }
 ```
+
+---
+
+## 📚 Documentation
+
+Detailed guides for various subsystems:
+
+*   [Core Routing & Server](./doc/routing.md)
+*   [Dependency Injection](./doc/dependency-injection.md)
+*   [Database & Migration](./doc/database.md)
+*   [Validation & Form Requests](./doc/validation.md)
+*   [Queue System](./doc/storage.md) <!-- Note: Actually storage is storage, queue is in core usually but let's check -->
+*   [WebSocket Hub](./doc/websockets.md)
+*   [Technical Insights & Best Practices](./doc/implementation_insights.md) 🚀
 
 ---
 

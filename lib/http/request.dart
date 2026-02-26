@@ -43,4 +43,33 @@ class Request {
   /// Convenience getter for the client's IP address.
   String get ip =>
       rawRequest.connectionInfo?.remoteAddress.address ?? 'unknown';
+
+  /// Helper to get a path parameter as an integer.
+  int? paramInt(String key, [int? defaultValue]) {
+    final val = params[key];
+    if (val == null) return defaultValue;
+    return val is int ? val : int.tryParse(val.toString()) ?? defaultValue;
+  }
+
+  /// Helper to get a query parameter as an integer.
+  int? queryInt(String key, [int? defaultValue]) {
+    final val = query[key];
+    if (val == null) return defaultValue;
+    return val is int ? val : int.tryParse(val.toString()) ?? defaultValue;
+  }
+
+  /// Helper to get a query parameter as a double.
+  double? queryDouble(String key, [double? defaultValue]) {
+    final val = query[key];
+    if (val == null) return defaultValue;
+    return val is double ? val : double.tryParse(val.toString()) ?? defaultValue;
+  }
+
+  /// Helper to get a query parameter as a boolean.
+  bool queryBool(String key, [bool defaultValue = false]) {
+    final val = query[key]?.toString().toLowerCase();
+    if (val == 'true' || val == '1') return true;
+    if (val == 'false' || val == '0') return false;
+    return defaultValue;
+  }
 }

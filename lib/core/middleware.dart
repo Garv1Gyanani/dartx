@@ -33,3 +33,36 @@ class Pipeline {
     return await next();
   }
 }
+
+/// Utility class for middleware operations.
+class MiddlewareHelper {
+/// Wraps a [middleware] to ONLY execute if the request path matches [path].
+static Middleware only(String path, Middleware middleware) {
+  return (ctx, next) async {
+    if (ctx.request.uri.path == path) {
+      return await middleware(ctx, next);
+    }
+    return await next();
+  };
+}
+
+/// Wraps a [middleware] to execute for all paths EXCEPT those starting with [prefix].
+static Middleware except(String prefix, Middleware middleware) {
+  return (ctx, next) async {
+    if (ctx.request.uri.path.startsWith(prefix)) {
+      return await next();
+    }
+    return await middleware(ctx, next);
+  };
+}
+
+/// Wraps a [middleware] to execute for all paths EXCEPT those in the [paths] list.
+static Middleware exceptMany(List<String> paths, Middleware middleware) {
+  return (ctx, next) async {
+    if (paths.contains(ctx.request.uri.path)) {
+      return await next();
+    }
+    return await middleware(ctx, next);
+  };
+}
+}

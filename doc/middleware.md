@@ -57,3 +57,18 @@ Kronix comes with several built-in plugins/middleware:
 - **Rate Limiter**: `RateLimiter(maxRequests: 100).handle()`
 - **Request Size Limit**: `sizeLimit('1mb')`
 - **JWT Auth**: `jwtAuth(secret: 'my-secret')`
+
+## Conditional Execution
+
+Use the `MiddlewareHelper` to control when middleware should execute based on the request path.
+
+```dart
+// Execute for all paths EXCEPT /login and /register
+app.use(MiddlewareHelper.exceptMany(['/login', '/register'], authMiddleware));
+
+// Shield everything EXCEPT the public folder
+app.use(MiddlewareHelper.except('/public/', authMiddleware));
+
+// Only run for a specific endpoint
+app.use(MiddlewareHelper.only('/admin/backup', backupMiddleware));
+```
