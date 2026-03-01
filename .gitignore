@@ -34,3 +34,6 @@ my_blog/
 storage/
 test_storage/
 uploads/
+
+# Website (Local only)
+dartxwebsite/
