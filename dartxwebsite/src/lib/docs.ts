@@ -1,12 +1,12 @@
 export const docs = [
-    {
-        id: 'getting-started',
-        title: 'Getting Started',
-        sections: [
-            {
-                id: 'introduction',
-                title: 'Introduction',
-                content: `kronix is a high-performance, architecturally hardened web framework for the Dart ecosystem. It is designed for developers who require a structured, batteries-included environment for building scalable APIs.
+  {
+    id: 'getting-started',
+    title: 'Getting Started',
+    sections: [
+      {
+        id: 'introduction',
+        title: 'Introduction',
+        content: `kronix is a high-performance, architecturally hardened web framework for the Dart ecosystem. It is designed for developers who require a structured, batteries-included environment for building scalable APIs.
 
 ### Core Philosophy
 kronix draws inspiration from established patterns found in Laravel and NestJS, bringing type-safe dependency injection, fluent database interactions, and a declarative validation system to the Dart backend.
@@ -15,12 +15,12 @@ kronix draws inspiration from established patterns found in Laravel and NestJS, 
 - **Deterministic Lifecycle**: Predictable resource cleanup and socket management.
 * **Type-Safe DI**: Hierarchical containers prevent state leakage.
 * **Production Ready**: Built-in micro-benchmarking and structured logging.
-* **CLI Driven**: Rapid scaffolding for high productivity.`
-            },
-            {
-                id: 'installation',
-                title: 'Installation',
-                content: `To get started with kronix, you need to install the CLI tool globally or run it via the Dart SDK.
+* **V0.2.0 "Venom"**: Now with Native ORM Relationships and Unified Caching.`
+      },
+      {
+        id: 'installation',
+        title: 'Installation',
+        content: `To get started with kronix, you need to install the CLI tool globally or run it via the Dart SDK.
 
 ### Using the CLI
 The fastest way to start is using the scaffold command:
@@ -38,18 +38,19 @@ dart pub get
 
 ### Requirements
 - Dart SDK 3.0.0 or higher
-- PostgreSQL (for the ORM features)`
-            }
-        ]
-    },
-    {
-        id: 'core-concepts',
-        title: 'Core Concepts',
-        sections: [
-            {
-                id: 'routing',
-                title: 'Routing & Groups',
-                content: `kronix uses a high-performance Trie-based router. This ensures that route matching remains O(n) relative to path segments, not total route count.
+- PostgreSQL (for the ORM features)
+- Redis (Optional, for Redis Cache driver)`
+      }
+    ]
+  },
+  {
+    id: 'core-concepts',
+    title: 'Core Concepts',
+    sections: [
+      {
+        id: 'routing',
+        title: 'Routing & Groups',
+        content: `kronix uses a high-performance Trie-based router. This ensures that route matching remains O(n) relative to path segments, not total route count.
 
 ### Basic Routing
 \`\`\`dart
@@ -59,6 +60,9 @@ app.get('/welcome', (ctx) async {
   return ctx.text('Hello World');
 });
 \`\`\`
+
+### Pre-compiled Pipelines
+In v0.2.0, kronix automatically pre-compiles your middleware chains during server startup. This eliminates the overhead of building the execution stack for every request, resulting in extreme throughput.
 
 ### Route Groups
 Groups allow you to apply middleware and path prefixes to multiple routes at once.
@@ -79,15 +83,12 @@ app.get('/users/:id', (ctx) async {
   final userId = ctx.params['id'];
   return ctx.json({'userId': userId});
 });
-\`\`\`
-
-### Performance
-The router is optimized for low latency, with an average match time of **~1.3µs** for a 1,000 route table.`
-            },
-            {
-                id: 'dependency-injection',
-                title: 'Dependency Injection',
-                content: `The DI system in kronix is hierarchical. There is a global container for singletons and request-specific child containers for scoped services.
+\`\`\``
+      },
+      {
+        id: 'dependency-injection',
+        title: 'Dependency Injection',
+        content: `The DI system in kronix is hierarchical. There is a global container for singletons and request-specific child containers for scoped services.
 
 ### Registration
 \`\`\`dart
@@ -110,17 +111,17 @@ app.get('/pay', (ctx) async {
 
 ### Resource Disposal
 Any service implementing the \`Disposable\` interface will be automatically cleaned up when the request lifecycle ends.`
-            }
-        ]
-    },
-    {
-        id: 'data-layer',
-        title: 'Data & Validation',
-        sections: [
-            {
-                id: 'database-orm',
-                title: 'Query Builder & ORM',
-                content: `kronix features a fluent Query Builder that makes working with PostgreSQL intuitive and type-safe.
+      }
+    ]
+  },
+  {
+    id: 'data-layer',
+    title: 'Database & ORM',
+    sections: [
+      {
+        id: 'query-builder',
+        title: 'Query Builder',
+        content: `kronix features a fluent Query Builder that makes working with PostgreSQL intuitive and type-safe.
 
 ### Basic Queries
 \`\`\`dart
@@ -138,72 +139,157 @@ await db.transaction((tx) async {
   await tx.table('orders').insert(data);
   await tx.table('inventory').decrement('stock');
 });
-\`\`\`
+\`\`\``
+      },
+      {
+        id: 'orm-relationships',
+        title: 'ORM Relationships',
+        content: `Kronix ORM supports native relationships, allowing you to traverse your database naturally.
 
-### Migrations
-The migration system uses a batch-based execution model. Run \`kronix migrate\` to update your schema.`
-            },
-            {
-                id: 'validation',
-                title: 'Form Request Validation',
-                content: `Validation in kronix is declarative. Instead of manual checks in your controllers, you define \`FormRequest\` classes.
-
-### Defining Rules
+### Defining Relationships
 \`\`\`dart
-class CreateUserRequest extends FormRequest {
-  @override
-  Map<String, String> rules() => {
-    'email': 'required|email',
-    'password': 'required|min:8',
-  };
+class User extends Model {
+  @override String get tableName => 'users';
+
+  // Has Many
+  Future<List<Post>> posts() => hasMany<Post>(Post.fromRow);
+
+  // Has One
+  Future<Profile?> profile() => hasOne<Profile>(Profile.fromRow);
+}
+
+class Post extends Model {
+  @override String get tableName => 'posts';
+
+  // Belongs To
+  Future<User?> author() => belongsTo<User>(User.fromRow);
 }
 \`\`\`
 
 ### Usage
 \`\`\`dart
-app.post('/register', (ctx) async {
-  final data = await ctx.validate(CreateUserRequest());
-  // If validation fails, a 422 JSON response is sent automatically.
+final user = await User.query().find(1);
+final posts = await user.posts(); // Resolves relationships
+\`\`\``
+      }
+    ]
+  },
+  {
+    id: 'services',
+    title: 'Services & Auth',
+    sections: [
+      {
+        id: 'caching',
+        title: 'Unified Caching',
+        content: `The \`Cache\` facade provides a consistent API for temporary data storage across multiple drivers.
+
+### Configuration
+Set \`CACHE_DRIVER=redis\` or \`CACHE_DRIVER=memory\` in your \`.env\`.
+
+### Fluent API
+\`\`\`dart
+// Basic get/set
+await Cache.put('key', 'value', Duration(minutes: 10));
+final val = await Cache.get('key');
+
+// The "Remember" Pattern
+final userCount = await Cache.remember('users.count', Duration(hour: 1), () async {
+    return await User.query().count();
+});
+\`\`\``
+      },
+      {
+        id: 'sessions',
+        title: 'Native Sessions',
+        content: `Kronix provides server-side sessions managed via cookies.
+
+### Setup
+Add the \`SessionMiddleware\` to your app globally or to specific groups.
+
+\`\`\`dart
+app.use(SessionMiddleware());
+
+app.get('/dashboard', (ctx) async {
+  final session = ctx.session;
+  session.set('last_visit', DateTime.now().toString());
+  
+  return ctx.text('Welcome back!');
 });
 \`\`\`
 
-### Latency
-Validation is extremely lightweight, with an overhead of only **~2.7µs** per object validation.`
-            }
-        ]
-    },
-    {
-        id: 'advanced',
-        title: 'Advanced Features',
-        sections: [
-            {
-                id: 'exception-handling',
-                title: 'Exception Handling',
-                content: `kronix handles errors deterministically through an Exception Transformer.
+By default, sessions are stored in memory but can be persisted to Redis for distributed environments.`
+      },
+      {
+        id: 'validation',
+        title: 'Validation Engine',
+        content: `Validation in kronix is declarative and extremely fast (~3.6µs per object).
 
-### Typed Exceptions
-Throwing a \`NotFoundException\` or \`UnauthorizedException\` will automatically result in the correct HTTP status code and a standardized JSON body.
-
-### Environment Awareness
-In development (\`APP_ENV=local\`), exceptions include full stack traces and debug info. In production, these are silenced to avoid information leakage.`
-            },
-            {
-                id: 'middleware-pipelines',
-                title: 'Middleware Pipelines',
-                content: `Middleware in kronix follows the Onion Pattern. Each layer can execute logic before and after the next handler in the stack.
-
+### Inline Validation
 \`\`\`dart
-class LoggerMiddleware extends Middleware {
-  @override
-  Future<Response> handle(Context ctx, Next next) async {
-    print('Start');
-    final res = await next();
-    print('End');
-    return res;
-  }
-}
+app.post('/register', (ctx) async {
+  final data = await ctx.validate({
+    'email': 'required|email',
+    'password': 'required|min:8',
+    'age': 'numeric|min:18',
+  });
+});
+\`\`\`
+
+### Complex Data
+Supports nested arrays and wildcard validation:
+\`\`\`dart
+'items.*.id': 'required|numeric',
+'items.*.qty': 'required|min:1',
 \`\`\``
-            }
-        ]
-    }
+      }
+    ]
+  },
+  {
+    id: 'advanced',
+    title: 'Advanced & CLI',
+    sections: [
+      {
+        id: 'cli-tool',
+        title: 'CLI Scaffolding 2.0',
+        content: `The \`kronix\` CLI is your primary tool for rapid development.
+
+### Automated Migrations
+When creating a model, you can automatically generate a migration file:
+
+\`\`\`bash
+kronix make:model Product -m
+\`\`\`
+
+This creates:
+1. \`lib/models/product.dart\`
+2. \`lib/database/migrations/[timestamp]_create_products_table.dart\`
+
+### Watch Mode
+Rebuild and restart your server automatically on file changes:
+\`\`\`bash
+kronix watch
+\`\`\`
+
+### Production Build
+\`\`\`bash
+kronix build
+\`\`\``
+      },
+      {
+        id: 'security-harden',
+        title: 'Security Hardening',
+        content: `Kronix includes built-in protections against common web vulnerabilities.
+
+### Payload Size Limits
+Global enforcement of \`MAX_BODY_SIZE\` prevents OOM attacks from massive request bodies.
+
+### Backpressure Control
+Configure \`MAX_CONCURRENT_REQUESTS\` to gracefully reject traffic with a 503 response when the server is under extreme load.
+
+### Case-Insensitive Headers
+Seamless header handling ensures your middleware works regardless of client implementation (e.g., \`Authorization\` vs \`authorization\`).`
+      }
+    ]
+  }
 ];
+
