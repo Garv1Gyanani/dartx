@@ -1,61 +1,55 @@
 # 0.2.0
 
-- **Advanced ORM Relationships** — Native support for `belongsTo`, `hasMany`, and `hasOne`.
-- **Unified Caching Layer** — Fluent `Cache` facade with Memory and Redis drivers.
-- **Native Session Support** — Server-side cookie sessions with `SessionMiddleware`.
-- **CLI Scaffolding 2.0** — `kronix make:model Product -m` now creates migrations automatically.
-- **Middleware Pre-Compilation** — Extreme throughput optimization by pre-building execution chains.
-- **Hardenened Security** — Global request body limits and case-insensitive header handling.
-- **Fixed** OS port exhaustion in high-concurrency stress tests.
+- Added support for ORM relationships (`belongsTo`, `hasMany`, `hasOne`).
+- Added a unified caching layer with Memory and Redis drivers.
+- Added session support via `SessionMiddleware`.
+- Improved CLI scaffolding for models and migrations.
+- Optimized middleware execution chains.
+- Performance and security improvements (body limits, headers).
+- Fixed port exhaustion in concurrency tests.
 
 # 0.1.5
 
-- **Type-Safe Database Flow** — `ctx.query<User>(User.fromRow)` returns typed model instances.
-- **Fluent Schema Builder** — Declarative migrations with `Schema(db).create('table', (t) => ...)`.
-- **Wildcard Validation** — Support for `items.*` rules in `Validator`.
-- **Advanced Concurrency Control** — `MAX_CONCURRENT_REQUESTS` backpressure with 503 rejection.
-- **Improved DI Isolation** — Stronger child container boundaries for high-parallelism safety.
-- **Fixed** duplicate `Model` export conflict.
-- **Renamed** `ctx.query` to `ctx.queryParams` to avoid ORM collision.
+- Improved database flow with typed model instances.
+- Added a fluent schema builder for migrations.
+- Added wildcard validation support.
+- Added request backpressure control.
+- Improved dependency injection isolation.
+- Fixed model export conflicts.
+- Renamed `ctx.query` to `ctx.queryParams`.
 
 # 0.1.4
 
-- **Fluent Functional Testing** — `app.test().get('/api').assertStatus(200).assertJsonPath('data.id', 1)`.
-- **Route Explorer** — Auto-generated API docs at `/docs` (HTML) and `/docs/json` (JSON).
-- **Route metadata** — Fluent `.setSummary()`, `.setDescription()`, `.setMeta()` on route registrations.
-- **`App.stop()`** for clean test teardown without `exit(0)`.
-- **Fixed** UTF-8 response encoding crash on multi-byte characters (emojis in HTML).
-- All route registration methods now return `RouteData` for chaining.
+- Added functional testing utilities.
+- Added a route explorer to view registered routes.
+- Added metadata support for routes.
+- Added `App.stop()` for clean shutdowns.
+- Fixed UTF-8 encoding issues in responses.
 
 # 0.1.3
 
-- Added `multipart/form-data` request parsing for file uploads.
-- Introduced `Storage` abstraction with `LocalStorage` support.
-- Added `UploadedFile` class for easy file manipulation.
-- Integrated `ctx.storage` for disk operations in handlers.
-- Added `App.stop()` for graceful testing and shutdown.
+- Added file upload support.
+- Added storage abstraction (local storage).
+- Added `UploadedFile` class.
 
 # 0.1.2
 
-- Refactored and improved the primary example to showcase WebSockets and Validation better.
-- Added `example/example.dart` for better pub.dev compatibility.
+- Improved examples and documentation.
+- Better pub.dev compatibility.
 
 # 0.1.1
 
-- Added matured WebSocket support with `WebSocketHub` and Rooms.
-- Enhanced API documentation for all public members.
-- Updated dependencies for improved pub score.
-- Integrated WebSocket middleware protection.
+- Improved WebSocket support with rooms.
+- API documentation updates.
+- Dependency updates.
 
 # 0.1.0
 
-- Initial release of the Kronix framework.
-- High-performance Radix-Trie router with middleware support.
-- Hierarchical Dependency Injection with request scoping.
-- Declarative FormRequest validation system.
-- Fluent SQL Query Builder for PostgreSQL.
-- Atomic Database Migrations with batching.
-- Typed Configuration and Environment management.
-- Structured Logging with Request-ID correlation.
-- Deterministic Exception Transformation.
-- Built-in CLI for project scaffolding and watching.
+- Initial release.
+- Radix-Trie router.
+- Dependency Injection with scoping.
+- Form validation.
+- Query Builder.
+- Database migrations.
+- Logging and config management.
+

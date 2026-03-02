@@ -10,19 +10,34 @@ pubspec.lock
 
 # Build
 build/
+dist/
+node_modules/
 
 # Generated
 *.g.dart
 
 # Environment
 .env
+.env.*
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Test artifacts
+# Logs and test artifacts
+*.log
+*_output.txt
 test_results.txt
+*dry_run*.txt
+publish_final_log.txt
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*.~
+hello.dart
+test_simple.dart
 
 # Temp migration runner
 database/run_migrations.dart
@@ -37,3 +52,4 @@ uploads/
 
 # Website (Local only)
 dartxwebsite/
+
