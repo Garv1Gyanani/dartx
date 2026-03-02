@@ -1,6 +1,6 @@
 name: kronix
 description: A fast and flexible web framework for Dart.
-version: 0.2.1
+version: 0.3.0
 homepage: https://github.com/Garv1Gyanani/dartx
 repository: https://github.com/Garv1Gyanani/dartx
 issue_tracker: https://github.com/Garv1Gyanani/dartx/issues

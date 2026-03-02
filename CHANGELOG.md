@@ -1,3 +1,14 @@
+# 0.3.0
+
+- Major refactoring to standard project structure and Dart conventions.
+- Added comprehensive documentation (70%+) to public APIs.
+- Standardized constructor ordering (`sort_constructors_first` compliance).
+- Improved type safety with standardized generic collections.
+- Fixed `Map.add` bug in `Validator`.
+- Improved Exception handling and error responses.
+- Enhanced test suite and examples with documentation and better structure.
+- Updated splash banner in README.
+
 # 0.2.0
 
 - Added support for ORM relationships (`belongsTo`, `hasMany`, `hasOne`).
