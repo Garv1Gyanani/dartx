@@ -170,14 +170,14 @@ class App {
     try {
       _server = await HttpServer.bind(serverHost, serverPort, shared: true);
       _isStarted = true;
-      Logger.staticInfo('🚀 Server started on http://$serverHost:$serverPort');
+      Logger.staticInfo('Server started on http://$serverHost:$serverPort');
     } catch (e) {
       if (e is SocketException && (e.osError?.errorCode == 10048 || e.osError?.errorCode == 98)) {
-        Logger.staticError('❌ Port $serverPort is already in use. Please ensure no other instances of the server are running.');
+        Logger.staticError('Port $serverPort is already in use. Please ensure no other instances of the server are running.');
         // On Windows, errorCode 10048 is "Only one usage of each socket address is normally permitted"
         // On Linux, errorCode 98 is "Address already in use"
       } else {
-        Logger.staticError('❌ Failed to start server: $e');
+        Logger.staticError('Failed to start server: $e');
       }
       rethrow;
     }
@@ -213,7 +213,7 @@ class App {
   Future<void> _shutdown() async {
     if (_isShuttingDown) return;
     _isShuttingDown = true;
-    Logger.staticInfo('🛑 Shutting down server... Draining $activeRequests total connections.');
+    Logger.staticInfo('Shutting down server... Draining $activeRequests total connections.');
 
     // Stop accepting new connections but keep the socket pool alive for now
     final stopFuture = stop(force: false);
@@ -223,16 +223,16 @@ class App {
       await Future.delayed(Duration(seconds: 1));
       timeoutSeconds--;
       if (timeoutSeconds % 5 == 0 && timeoutSeconds > 0) {
-        Logger.staticInfo('⏳ Waiting for $activeRequests connections... ($timeoutSeconds s remaining)');
+        Logger.staticInfo('Waiting for $activeRequests connections... ($timeoutSeconds s remaining)');
       }
     }
 
     if (activeRequests > 0) {
-      Logger.staticWarning('⚠️ Timeout reached. Forcing closure of $activeRequests connections.');
+      Logger.staticWarning('Timeout reached. Forcing closure of $activeRequests connections.');
       await stop(force: true);
     } else {
       await stopFuture;
-      Logger.staticInfo('👋 All connections drained. Server stopped.');
+      Logger.staticInfo('All connections drained. Server stopped.');
     }
 
     // Only exit if not in test environment or explicitly requested

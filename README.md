@@ -1,6 +1,6 @@
 ![Kronix Splash](assets/splash.png)
 
-# 🐍 Kronix
+# Kronix
 ### A fast and flexible web framework for Dart.
 
 [![pub package](https://img.shields.io/pub/v/kronix.svg)](https://pub.dev/packages/kronix)
@@ -10,7 +10,7 @@ Kronix is a web framework for the Dart ecosystem designed for performance and ea
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 - **Fast Routing**: Radix-Trie based router for efficient path matching.
 - **Dependency Injection**: Hierarchical DI with request scoping.
@@ -22,7 +22,7 @@ Kronix is a web framework for the Dart ecosystem designed for performance and ea
 
 ---
 
-## 🏁 Quick Start
+## Quick Start
 
 ### 1. Installation
 
@@ -62,7 +62,7 @@ void main() async {
 
 ---
 
-## 🛠 Features
+## Features
 
 ### ORM (Active Record)
 Define relationships easily:
@@ -95,11 +95,11 @@ app.group('/api/v1', middleware: [AuthMiddleware()], callback: (router) {
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) to get started.
 
-## 📄 License
+## License
 
 Kronix is open-sourced software licensed under the [MIT license](LICENSE).
 

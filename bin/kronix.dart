@@ -101,7 +101,7 @@ void _createApp(List<String> args) {
     return;
   }
 
-  print('🚀 Scaffolding new Kronix app: $name...');
+  print('Scaffolding new Kronix app: $name...');
 
   // Create Folders
   _createDir('$name/bin');
@@ -123,7 +123,7 @@ void _createApp(List<String> args) {
   _writeFile('$name/routes/api.dart', Templates.apiRoutes());
   _writeFile('$name/app/controllers/user_controller.dart', Templates.controller('User'));
 
-  print('\n✅ App $name created successfully!');
+  print('\nApp $name created successfully!');
   print('\nNext steps:');
   print('  cd $name');
   print('  dart pub get');
@@ -144,7 +144,7 @@ void _generateMigration(List<String> args) {
   final className = name.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join('');
 
   _writeFile(path, Templates.migration(className));
-  print('✨ Created migration: $className at $path');
+  print('Created migration: $className at $path');
 }
 
 void _generateModel(ArgResults cmd) {
@@ -162,7 +162,7 @@ void _generateModel(ArgResults cmd) {
 }
 
 void _listRoutes() {
-  print('ℹ️  Listing routes requires booting the app. This feature is coming soon!');
+  print('Listing routes requires booting the app. This feature is coming soon!');
   print('Tip: Check your routes/api.dart file.');
 }
 
@@ -176,7 +176,7 @@ void _generateComponent(List<String> args, String type, String folder, String Fu
   final path = '$folder/$fileName';
 
   _writeFile(path, template(name));
-  print('✨ Created $type: $name at $path');
+  print('Created $type: $name at $path');
 }
 
 void _createDir(String path) {
@@ -249,11 +249,11 @@ void main() async {
   final tempFile = File('database/run_migrations.dart');
   tempFile.writeAsStringSync(runnerContent);
 
-  print('⏳ Running migrations...');
+  print('Running migrations...');
   final result = await Process.run('dart', ['run', tempFile.path]);
   
   if (result.exitCode != 0) {
-    print('❌ Migration failed.');
+    print('Migration failed.');
   }
 
   tempFile.deleteSync();
@@ -266,12 +266,12 @@ void _watch(List<String> args) async {
     return;
   }
 
-  print('👀 Watching for changes... Target: $target');
+  print('Watching for changes... Target: $target');
   Process? process;
 
   Future<void> restart() async {
     if (process != null) {
-      print('♻️ Restarting...');
+      print('Restarting...');
       process!.kill();
     }
     process = await Process.start(
@@ -292,7 +292,7 @@ void _watch(List<String> args) async {
       
       debounce?.cancel();
       debounce = Timer(const Duration(milliseconds: 300), () {
-        print('📝 Change detected: ${event.path}');
+        print('Change detected: ${event.path}');
         restart();
       });
     }
