@@ -7,6 +7,9 @@ import 'job.dart';
 /// Implement this to plug in Redis, PostgreSQL, SQS, or any other
 /// message broker as a queue backend.
 abstract class QueueDriver {
+  /// Internal constructor for [QueueDriver].
+  QueueDriver();
+
   /// Pushes a [job] onto the specified [queue].
   Future<void> push(Job job, [String queue = 'default']);
 
@@ -47,24 +50,27 @@ abstract class QueueDriver {
 /// Jobs are stored in Dart collections and are lost when the process exits.
 /// For production, use a persistent driver like Redis or PostgreSQL.
 class MemoryQueueDriver implements QueueDriver {
+  /// Creates a new [MemoryQueueDriver].
+  MemoryQueueDriver();
+
   final Map<String, Queue<Job>> _queues = {};
   final List<Job> _failed = [];
   final List<Job> _completed = [];
 
-  Queue<Job> _queue(String name) => _queues.putIfAbsent(name, () => Queue<Job>());
+  Queue<Job> _getQueue(String name) => _queues.putIfAbsent(name, Queue<Job>.new);
 
   @override
   Future<void> push(Job job, [String queue = 'default']) async {
-    _queue(queue).add(job);
+    _getQueue(queue).add(job);
   }
 
   @override
   Future<Job?> pop([String queue = 'default']) async {
-    final q = _queue(queue);
+    final q = _getQueue(queue);
     if (q.isEmpty) return null;
 
     // Find the first available job (respects delayed/retry scheduling)
-    for (int i = 0; i < q.length; i++) {
+    for (var i = 0; i < q.length; i++) {
       final job = q.removeFirst();
       if (job.isAvailable) return job;
       // Not yet available, put it back at the end
@@ -75,7 +81,7 @@ class MemoryQueueDriver implements QueueDriver {
   }
 
   @override
-  Future<int> size([String queue = 'default']) async => _queue(queue).length;
+  Future<int> size([String queue = 'default']) async => _getQueue(queue).length;
 
   @override
   Future<void> complete(Job job) async {
@@ -86,7 +92,7 @@ class MemoryQueueDriver implements QueueDriver {
 
   @override
   Future<void> release(Job job) async {
-    final q = _queue(job.queue);
+    final q = _getQueue(job.queue);
     q.add(job);
   }
 
@@ -114,13 +120,13 @@ class MemoryQueueDriver implements QueueDriver {
     job.lastStackTrace = null;
     job.availableAt = null;
     job.finishedAt = null;
-    _queue(job.queue).add(job);
+    _getQueue(job.queue).add(job);
     return true;
   }
 
   @override
   Future<void> clear([String queue = 'default']) async {
-    _queue(queue).clear();
+    _getQueue(queue).clear();
   }
 
   @override

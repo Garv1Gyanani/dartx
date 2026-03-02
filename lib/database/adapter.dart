@@ -2,6 +2,9 @@ import 'query_builder.dart';
 
 /// Represents the result of a database query execution.
 abstract class QueryResult {
+  /// Internal constructor for [QueryResult].
+  QueryResult();
+
   /// The list of rows returned by the query, represented as Maps.
   List<Map<String, dynamic>> get rows;
 
@@ -11,6 +14,9 @@ abstract class QueryResult {
 
 /// Abstract interface for database drivers.
 abstract class DatabaseAdapter implements DatabaseExecutor {
+  /// Internal constructor for [DatabaseAdapter].
+  DatabaseAdapter();
+
   /// Returns a [QueryBuilder] for the specified [name] (table).
   /// 
   /// If [executor] is provided, the builder will run queries through it
@@ -30,6 +36,9 @@ abstract class DatabaseAdapter implements DatabaseExecutor {
 
 /// Interface for executing queries within a specific database scope.
 abstract class DatabaseExecutor {
+  /// Internal constructor for [DatabaseExecutor].
+  DatabaseExecutor();
+
   /// Executes a raw [sql] query within this executor's scope.
   Future<QueryResult> query(String sql, [Map<String, dynamic>? params]);
   

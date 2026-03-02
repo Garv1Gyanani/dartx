@@ -1,24 +1,29 @@
 import 'dart:io';
-import '../core/context.dart';
 import '../core/middleware.dart';
-import '../http/response.dart';
 import 'session.dart';
 import 'store.dart';
 
 /// Middleware for managing server-side sessions.
 class SessionMiddleware {
-  final SessionStore store;
-  final String cookieName;
-  final Duration ttl;
-
+  /// Creates a new [SessionMiddleware] instance.
   SessionMiddleware({
     required this.store,
     this.cookieName = 'kronix_session',
     this.ttl = const Duration(hours: 2),
   });
 
+  /// The storage engine used to persist session data.
+  final SessionStore store;
+
+  /// The name of the session cookie.
+  final String cookieName;
+
+  /// The time-to-live for sessions.
+  final Duration ttl;
+
+  /// Returns a [Middleware] that manages the session lifecycle.
   Middleware handle() {
-    return (Context ctx, Next next) async {
+    return (ctx, next) async {
       // 1. Try to get session ID from cookie
       final cookies = ctx.request.rawRequest.cookies;
       final sessionCookie = cookies.firstWhere(
@@ -26,7 +31,7 @@ class SessionMiddleware {
         orElse: () => Cookie(cookieName, ''),
       );
 
-      String sessionId = sessionCookie.value;
+      var sessionId = sessionCookie.value;
       Session session;
 
       // 2. Load existing or create new session
@@ -47,9 +52,9 @@ class SessionMiddleware {
       ctx.set('session', session);
 
       // 4. Continue execution
-      final response = await next();
+      final resp = await next();
 
-      // 5. Persist session if dirty
+      // 5. Persist session if it was modified
       if (session.isDirty) {
         await store.put(sessionId, session.data, ttl: ttl);
       }
@@ -60,12 +65,7 @@ class SessionMiddleware {
         ..path = '/'
         ..maxAge = ttl.inSeconds;
       
-      // Since Response is immutable, we use withHeaders but cookies are handled via the raw request?
-      // Actually, we should probably add a cookie helper to Response or handle it in the server's _sendResponse.
-      // For now, let's use withHeaders to pass the Set-Cookie string.
-      return response.withHeaders({
-        'set-cookie': cookie.toString(),
-      });
+      return resp.withCookie(cookie.toString());
     };
   }
 }

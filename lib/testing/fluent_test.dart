@@ -1,19 +1,34 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
-import '../core/server.dart';
+import 'package:test/test.dart';
 import '../core/config.dart';
+import '../core/server.dart';
 
 /// A fluent wrapper around HTTP responses for easier assertions in tests.
 class TestResponse {
+  /// Creates a new [TestResponse] from an underlying [http.Response].
+  TestResponse(this.raw);
+
+  /// The raw HTTP response from the test client.
   final http.Response raw;
 
-  TestResponse(this.raw);
+  /// Returns the status code of the response.
+  int get statusCode => raw.statusCode;
+
+  /// Returns the body content of the response.
+  String get body => raw.body;
+
+  /// Returns the headers of the response.
+  Map<String, String> get headers => raw.headers;
 
   /// Asserts that the response status code matches [expected].
   TestResponse assertStatus(int expected) {
-    expect(raw.statusCode, expected, reason: 'Expected status $expected but got ${raw.statusCode}.\nBody: ${raw.body}');
+    expect(
+      raw.statusCode,
+      expected,
+      reason: 'Expected status $expected but got ${raw.statusCode}.\nBody: ${raw.body}',
+    );
     return this;
   }
 
@@ -35,9 +50,9 @@ class TestResponse {
   TestResponse assertJsonPath(String path, dynamic expected) {
     final decoded = jsonDecode(raw.body);
     final segments = path.split('.');
-    dynamic current = decoded;
+    var current = decoded;
     
-    for (var segment in segments) {
+    for (final segment in segments) {
       if (current is Map && current.containsKey(segment)) {
         current = current[segment];
       } else if (current is List) {
@@ -61,19 +76,17 @@ class TestResponse {
     expect(raw.headers[key.toLowerCase()], value);
     return this;
   }
-
-  int get statusCode => raw.statusCode;
-  String get body => raw.body;
-  Map<String, String> get headers => raw.headers;
 }
 
 /// A client for making fluent, functional requests to a Kronix [App].
 class TestClient {
+  /// Creates a [TestClient] for the given [app].
+  TestClient(this.app);
+
+  /// The application instance being tested.
   final App app;
   late int _port;
   bool _isRunning = false;
-
-  TestClient(this.app);
 
   /// Starts the app on a random port for testing.
   Future<void> _ensureStarted() async {
@@ -85,10 +98,11 @@ class TestClient {
     await socket.close();
 
     Config.set('APP_ENV', 'test');
-    // We don't use unawaited here to avoid lint issues, 
-    // but the listen loop is infinite so we use a small delay.
-    final future = app.listen(port: _port, host: 'localhost');
-    await Future.delayed(Duration(milliseconds: 200));
+    // The listen call starts the server in an infinite loop.
+    // We add a small delay to ensure it's ready.
+    // ignore: unawaited_future
+    app.listen(port: _port, host: 'localhost');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
     _isRunning = true;
   }
 
@@ -99,32 +113,36 @@ class TestClient {
     _isRunning = false;
   }
 
+  /// Makes a `GET` request to the given [path].
   Future<TestResponse> get(String path, {Map<String, String>? headers}) async {
     await _ensureStarted();
     final res = await http.get(Uri.parse('http://localhost:$_port$path'), headers: headers);
     return TestResponse(res);
   }
 
+  /// Makes a `POST` request with an optional [body].
   Future<TestResponse> post(String path, {Map<String, String>? headers, dynamic body}) async {
     await _ensureStarted();
     final res = await http.post(
       Uri.parse('http://localhost:$_port$path'), 
       headers: headers, 
-      body: body is Map ? jsonEncode(body) : body
+      body: body is Map ? jsonEncode(body) : body,
     );
     return TestResponse(res);
   }
 
+  /// Makes a `PUT` request with an optional [body].
   Future<TestResponse> put(String path, {Map<String, String>? headers, dynamic body}) async {
     await _ensureStarted();
     final res = await http.put(
       Uri.parse('http://localhost:$_port$path'), 
       headers: headers, 
-      body: body is Map ? jsonEncode(body) : body
+      body: body is Map ? jsonEncode(body) : body,
     );
     return TestResponse(res);
   }
 
+  /// Makes a `DELETE` request to the given [path].
   Future<TestResponse> delete(String path, {Map<String, String>? headers}) async {
     await _ensureStarted();
     final res = await http.delete(Uri.parse('http://localhost:$_port$path'), headers: headers);
@@ -134,5 +152,6 @@ class TestClient {
 
 /// Extension to easily create a [TestClient] from an [App].
 extension AppTestExtension on App {
+  /// Returns a [TestClient] instance for the current [App].
   TestClient test() => TestClient(this);
 }

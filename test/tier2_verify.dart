@@ -2,57 +2,59 @@ import 'dart:io';
 import 'package:kronix/kronix.dart';
 
 void main() async {
-  print('========================================');
-  print('   Kronix TIER 2 VERIFICATION (Cache & Session)');
-  print('========================================\n');
+  stdout.writeln('========================================');
+  stdout.writeln('   KRONIX TIER 2 VERIFICATION (Cache & Session)');
+  stdout.writeln('========================================\n');
 
   await testCache();
   await testSessions();
 
-  print('\nTier 2 Verification Complete.');
+  stdout.writeln('\nTier 2 Verification Complete.');
   exit(0);
 }
 
+/// Tests basic Cache operations.
 Future<void> testCache() async {
-  print('--- Testing Cache (InMemory) ---');
+  stdout.writeln('--- Testing Cache (InMemory) ---');
   
   await Cache.put('name', 'Kronix');
   final name = await Cache.get<String>('name');
   
   if (name == 'Kronix') {
-    print('✅ Cache put/get works.');
+    stdout.writeln('✅ Cache put/get works.');
   } else {
-    print('❌ Cache failed. Got: $name');
+    stdout.writeln('❌ Cache failed. Got: $name');
   }
 
-  print('Testing Cache.remember...');
-  final remembered = await Cache.remember('count', Duration(seconds: 1), () => 42);
+  stdout.writeln('Testing Cache.remember...');
+  final remembered = await Cache.remember('count', const Duration(seconds: 1), () => 42);
   final retrieved = await Cache.get<int>('count');
   
   if (remembered == 42 && retrieved == 42) {
-    print('✅ Cache.remember works.');
+    stdout.writeln('✅ Cache.remember works.');
   } else {
-    print('❌ Cache.remember failed.');
+    stdout.writeln('❌ Cache.remember failed.');
   }
 
   await Cache.increment('visits');
   await Cache.increment('visits');
   final visits = await Cache.get<int>('visits');
   if (visits == 2) {
-    print('✅ Cache increment works.');
+    stdout.writeln('✅ Cache increment works.');
   } else {
-    print('❌ Cache increment failed: $visits');
+    stdout.writeln('❌ Cache increment failed: $visits');
   }
 }
 
+/// Tests Session management and persistence.
 Future<void> testSessions() async {
-  print('\n--- Testing Sessions ---');
+  stdout.writeln('\n--- Testing Sessions ---');
   
   final store = MemorySessionStore();
   final middleware = SessionMiddleware(store: store);
   
   // 1. Initial Request (No cookie)
-  print('Testing session initialization...');
+  stdout.writeln('Testing session initialization...');
   final rawReq1 = MockHttpRequest('GET', '/');
   final ctx1 = Context(Request(rawRequest: rawReq1), container: Container());
   
@@ -63,13 +65,13 @@ Future<void> testSessions() async {
 
   final setCookie = res1.headers['set-cookie'] ?? '';
   if (setCookie.contains('kronix_session=')) {
-    print('✅ Session cookie set in response.');
+    stdout.writeln('✅ Session cookie set in response.');
   } else {
-    print('❌ Set-Cookie missing.');
+    stdout.writeln('❌ Set-Cookie missing.');
   }
 
   // 2. Subsequent Request (With cookie)
-  print('Testing session persistence...');
+  stdout.writeln('Testing session persistence...');
   final parts = setCookie.split('kronix_session=');
   final sessionId = parts[1].split(';')[0];
   
@@ -81,9 +83,9 @@ Future<void> testSessions() async {
   await middleware.handle()(ctx2, () async {
     final uid = ctx2.session.get<int>('user_id');
     if (uid == 123) {
-      print('✅ Session data persisted correctly.');
+      stdout.writeln('✅ Session data persisted correctly.');
     } else {
-      print('❌ Session data lost. Got: $uid');
+      stdout.writeln('❌ Session data lost. Got: $uid');
     }
     return Response.ok('ok');
   });
@@ -91,14 +93,23 @@ Future<void> testSessions() async {
 
 // ─── MOCKS ───────────────────────────────────────────────────────
 
+/// Mock [HttpRequest] for Tier 2 verification.
 class MockHttpRequest implements HttpRequest {
-  @override final String method;
-  @override final Uri uri;
-  @override final HttpHeaders headers = MockHttpHeaders();
-  
+  /// Creates a new [MockHttpRequest].
   MockHttpRequest(this.method, String path) : uri = Uri.parse(path);
 
-  @override final HttpResponse response = MockHttpResponse();
+  @override
+  final String method;
+
+  @override
+  final Uri uri;
+
+  @override
+  final HttpHeaders headers = MockHttpHeaders();
+
+  @override
+  final HttpResponse response = MockHttpResponse();
+
   @override
   List<Cookie> get cookies {
     final cookieHeader = headers.value('Cookie') ?? '';
@@ -111,19 +122,35 @@ class MockHttpRequest implements HttpRequest {
     }).toList();
   }
 
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpHeaders] for Tier 2 verification.
 class MockHttpHeaders implements HttpHeaders {
-  final Map<String, List<String>> _data = {};
-  @override void add(String name, Object value, {bool preserveHeaderCase = false}) {
-    _data[name] ??= [];
+  /// Creates a new [MockHttpHeaders].
+  MockHttpHeaders();
+
+  final Map<String, List<String>> _data = <String, List<String>>{};
+
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) {
+    _data[name] ??= <String>[];
     _data[name]!.add(value.toString());
   }
-  @override String? value(String name) => _data[name]?.first;
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  String? value(String name) => _data[name]?.first;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpResponse] for Tier 2 verification.
 class MockHttpResponse implements HttpResponse {
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  /// Creates a new [MockHttpResponse].
+  MockHttpResponse();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

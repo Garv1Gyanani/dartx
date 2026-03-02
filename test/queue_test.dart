@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'package:test/test.dart';
+
 import 'package:kronix/kronix.dart';
+import 'package:test/test.dart';
 
 // =============================================================================
 // Test Jobs
@@ -8,12 +9,17 @@ import 'package:kronix/kronix.dart';
 
 /// A simple job that records its execution.
 class CounterJob extends Job {
-  static int counter = 0;
-  static List<String> log = [];
-
-  final String label;
-
+  /// Creates a new [CounterJob].
   CounterJob([this.label = 'default']);
+
+  /// Static counter of executions.
+  static int counter = 0;
+
+  /// Static log of execution labels.
+  static List<String> log = <String>[];
+
+  /// Label for this job instance.
+  final String label;
 
   @override
   String get name => 'CounterJob';
@@ -27,25 +33,32 @@ class CounterJob extends Job {
   @override
   Duration? get timeout => const Duration(seconds: 5);
 
+  /// Resets the static execution counters.
+  static void reset() {
+    counter = 0;
+    log = <String>[];
+  }
+
   @override
   Future<void> handle() async {
     counter++;
     log.add('executed:$label');
   }
-
-  static void reset() {
-    counter = 0;
-    log = [];
-  }
 }
 
 /// A job that fails a specific number of times then succeeds.
 class FlakeyJob extends Job {
-  static int handleCount = 0;
-  static bool succeeded = false;
-  final int failTimes;
-
+  /// Creates a new [FlakeyJob].
   FlakeyJob({this.failTimes = 2});
+
+  /// Total number of handle attempts.
+  static int handleCount = 0;
+
+  /// Whether the job eventually succeeded.
+  static bool succeeded = false;
+
+  /// Number of times to fail before succeeding.
+  final int failTimes;
 
   @override
   String get name => 'FlakeyJob';
@@ -56,6 +69,12 @@ class FlakeyJob extends Job {
   @override
   Duration get retryDelay => const Duration(milliseconds: 50);
 
+  /// Resets the static counters.
+  static void reset() {
+    handleCount = 0;
+    succeeded = false;
+  }
+
   @override
   Future<void> handle() async {
     handleCount++;
@@ -64,16 +83,17 @@ class FlakeyJob extends Job {
     }
     succeeded = true;
   }
-
-  static void reset() {
-    handleCount = 0;
-    succeeded = false;
-  }
 }
 
 /// A job that always fails and tracks permanent failure callback.
 class AlwaysFailJob extends Job {
+  /// Creates a new [AlwaysFailJob].
+  AlwaysFailJob();
+
+  /// Whether the permanent failure callback was triggered.
   static bool permanentlyFailed = false;
+
+  /// Number of times the general failure callback was triggered.
   static int failureCallbacks = 0;
 
   @override
@@ -84,6 +104,12 @@ class AlwaysFailJob extends Job {
 
   @override
   Duration get retryDelay => const Duration(milliseconds: 30);
+
+  /// Resets the static flags.
+  static void reset() {
+    permanentlyFailed = false;
+    failureCallbacks = 0;
+  }
 
   @override
   Future<void> handle() async {
@@ -99,15 +125,14 @@ class AlwaysFailJob extends Job {
   Future<void> onPermanentFailure(Object error, StackTrace stackTrace) async {
     permanentlyFailed = true;
   }
-
-  static void reset() {
-    permanentlyFailed = false;
-    failureCallbacks = 0;
-  }
 }
 
 /// A job dispatched to a custom queue.
 class PriorityJob extends Job {
+  /// Creates a new [PriorityJob].
+  PriorityJob();
+
+  /// Total number of executions.
   static int counter = 0;
 
   @override
@@ -116,18 +141,23 @@ class PriorityJob extends Job {
   @override
   String get queue => 'high-priority';
 
+  /// Resets the static counter.
+  static void reset() {
+    counter = 0;
+  }
+
   @override
   Future<void> handle() async {
     counter++;
-  }
-
-  static void reset() {
-    counter = 0;
   }
 }
 
 /// A job that hangs forever (for timeout testing).
 class HangingJob extends Job {
+  /// Creates a new [HangingJob].
+  HangingJob();
+
+  /// Whether the timeout interruption was detected.
   static bool wasInterrupted = false;
 
   @override
@@ -142,10 +172,15 @@ class HangingJob extends Job {
   @override
   Duration get retryDelay => const Duration(milliseconds: 10);
 
+  /// Resets the static flag.
+  static void reset() {
+    wasInterrupted = false;
+  }
+
   @override
   Future<void> handle() async {
     // This will hang until the timeout fires
-    await Future.delayed(const Duration(seconds: 60));
+    await Future<void>.delayed(const Duration(seconds: 60));
   }
 
   @override
@@ -154,14 +189,14 @@ class HangingJob extends Job {
       wasInterrupted = true;
     }
   }
-
-  static void reset() {
-    wasInterrupted = false;
-  }
 }
 
 /// A job with no timeout (should run indefinitely).
 class NoTimeoutJob extends Job {
+  /// Creates a new [NoTimeoutJob].
+  NoTimeoutJob();
+
+  /// Whether the job eventually completed.
   static bool completed = false;
 
   @override
@@ -170,21 +205,28 @@ class NoTimeoutJob extends Job {
   @override
   Duration? get timeout => null; // No timeout
 
-  @override
-  Future<void> handle() async {
-    await Future.delayed(const Duration(milliseconds: 50));
-    completed = true;
-  }
-
+  /// Resets the static flag.
   static void reset() {
     completed = false;
+  }
+
+  @override
+  Future<void> handle() async {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    completed = true;
   }
 }
 
 /// A slow job for rate limiting tests.
 class SlowCounterJob extends Job {
+  /// Creates a new [SlowCounterJob].
+  SlowCounterJob();
+
+  /// Total number of executions.
   static int counter = 0;
-  static List<DateTime> timestamps = [];
+
+  /// Timestamps of each execution.
+  static List<DateTime> timestamps = <DateTime>[];
 
   @override
   String get name => 'SlowCounterJob';
@@ -192,15 +234,16 @@ class SlowCounterJob extends Job {
   @override
   Duration? get timeout => const Duration(seconds: 5);
 
+  /// Resets the static data.
+  static void reset() {
+    counter = 0;
+    timestamps = <DateTime>[];
+  }
+
   @override
   Future<void> handle() async {
     counter++;
     timestamps.add(DateTime.now());
-  }
-
-  static void reset() {
-    counter = 0;
-    timestamps = [];
   }
 }
 
@@ -370,7 +413,7 @@ void main() {
         await queue.dispatch(AlwaysFailJob());
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 600));
+        await Future<void>.delayed(const Duration(milliseconds: 600));
         await queue.stopWorker();
 
         final deadLetters = await queue.deadLetters();
@@ -409,7 +452,7 @@ void main() {
         expect(CounterJob.counter, 1);
         expect(job.status, JobStatus.completed);
         expect(job.finishedAt, isNotNull);
-        expect(CounterJob.log, ['executed:sync']);
+        expect(CounterJob.log, <String>['executed:sync']);
         expect(await driver.size(), 0);
       });
 
@@ -429,7 +472,7 @@ void main() {
         await queue.dispatch(CounterJob('worker-2'));
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
         await queue.stopWorker();
 
         expect(CounterJob.counter, 2);
@@ -441,7 +484,7 @@ void main() {
         await queue.dispatch(FlakeyJob(failTimes: 2));
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         await queue.stopWorker();
 
         expect(FlakeyJob.succeeded, isTrue);
@@ -452,7 +495,7 @@ void main() {
         await queue.dispatch(AlwaysFailJob());
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 600));
+        await Future<void>.delayed(const Duration(milliseconds: 600));
         await queue.stopWorker();
 
         expect(AlwaysFailJob.permanentlyFailed, isTrue);
@@ -465,31 +508,31 @@ void main() {
         await queue.dispatch(PriorityJob());
 
         await queue.work(
-          queues: ['default', 'high-priority'],
+          queues: <String>['default', 'high-priority'],
           pollInterval: const Duration(milliseconds: 50),
         );
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
         await queue.stopWorker();
 
         expect(PriorityJob.counter, 2);
       });
 
       test('lifecycle callbacks fire', () async {
-        int processed = 0;
-        int completed = 0;
+        var processed = 0;
+        var completedCount = 0;
 
         await queue.dispatch(CounterJob('cb'));
 
         await queue.work(
           pollInterval: const Duration(milliseconds: 50),
           onProcess: (_) => processed++,
-          onComplete: (_) => completed++,
+          onComplete: (_) => completedCount++,
         );
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future<void>.delayed(const Duration(milliseconds: 300));
         await queue.stopWorker();
 
         expect(processed, 1);
-        expect(completed, 1);
+        expect(completedCount, 1);
       });
 
       test('Queue.pending reports correct counts', () async {
@@ -507,7 +550,7 @@ void main() {
 
     group('Timeout Protection', () {
       test('kills jobs that exceed timeout', () async {
-        bool timeoutCallbackFired = false;
+        var timeoutCallbackFired = false;
 
         await queue.dispatch(HangingJob());
 
@@ -516,7 +559,7 @@ void main() {
           onTimeout: (_) => timeoutCallbackFired = true,
         );
         // Wait for timeout (200ms) + retry delay + buffer
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         await queue.stopWorker();
 
         expect(HangingJob.wasInterrupted, isTrue);
@@ -527,7 +570,7 @@ void main() {
         await queue.dispatch(NoTimeoutJob());
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future<void>.delayed(const Duration(milliseconds: 300));
         await queue.stopWorker();
 
         expect(NoTimeoutJob.completed, isTrue);
@@ -549,7 +592,7 @@ void main() {
     group('Rate Limiting', () {
       test('maxJobsPerSecond limits throughput', () async {
         // Dispatch 10 jobs
-        for (int i = 0; i < 10; i++) {
+        for (var i = 0; i < 10; i++) {
           await queue.dispatch(SlowCounterJob());
         }
 
@@ -560,12 +603,12 @@ void main() {
         );
 
         // After 500ms, should have processed at most ~3 jobs (first second's budget)
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
         final countAfterHalfSecond = SlowCounterJob.counter;
         expect(countAfterHalfSecond, lessThanOrEqualTo(4)); // allow some timing slack
 
         // After 1.5s, should have more (second second's budget kicks in)
-        await Future.delayed(const Duration(milliseconds: 1200));
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
         await queue.stopWorker();
 
         expect(SlowCounterJob.counter, greaterThan(3));
@@ -582,7 +625,7 @@ void main() {
         await queue.dispatch(CounterJob('m2'));
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
         await queue.stopWorker();
 
         final stats = queue.stats;
@@ -597,7 +640,7 @@ void main() {
         await queue.dispatch(AlwaysFailJob());
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 600));
+        await Future<void>.delayed(const Duration(milliseconds: 600));
         await queue.stopWorker();
 
         final stats = queue.stats;
@@ -611,7 +654,7 @@ void main() {
         await queue.dispatch(HangingJob());
 
         await queue.work(pollInterval: const Duration(milliseconds: 50));
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         await queue.stopWorker();
 
         final stats = queue.stats;
@@ -620,7 +663,7 @@ void main() {
 
       test('QueueMetrics computes p95 correctly', () {
         final m = QueueMetrics();
-        for (int i = 1; i <= 100; i++) {
+        for (var i = 1; i <= 100; i++) {
           m.recordSuccess(Duration(milliseconds: i));
         }
         // p95 of 1..100 should be ~95
@@ -636,9 +679,10 @@ void main() {
         m.recordPermanentFailure();
         m.reset();
 
-        expect(m.snapshot['dispatched'], 0);
-        expect(m.snapshot['succeeded'], 0);
-        expect(m.snapshot['failed'], 0);
+        final stats = m.snapshot;
+        expect(stats['dispatched'], 0);
+        expect(stats['succeeded'], 0);
+        expect(stats['failed'], 0);
       });
     });
 
@@ -654,14 +698,14 @@ void main() {
 
         app.post('/send-email', (ctx) async {
           final jobId = await ctx.queue.dispatch(CounterJob('from-handler'));
-          return ctx.json({'queued': jobId});
+          return ctx.json(<String, String>{'queued': jobId});
         });
 
         final client = app.test();
 
-        await client.post('/send-email').then((res) => res
-            .assertStatus(200)
-            .assertBodyContains('queued'));
+        await client.post('/send-email').then(
+              (res) => res.assertStatus(200).assertBodyContains('queued'),
+            );
 
         await client.stop();
       });

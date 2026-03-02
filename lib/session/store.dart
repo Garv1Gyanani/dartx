@@ -2,6 +2,9 @@ import 'dart:async';
 
 /// Abstract interface for session storage.
 abstract class SessionStore {
+  /// Internal constructor for [SessionStore].
+  SessionStore();
+
   /// Retrieves session data by ID.
   Future<Map<String, dynamic>?> get(String id);
 
@@ -14,6 +17,9 @@ abstract class SessionStore {
 
 /// In-memory implementation of SessionStore.
 class MemorySessionStore implements SessionStore {
+  /// Creates a new [MemorySessionStore].
+  MemorySessionStore();
+
   final Map<String, _SessionEntry> _sessions = {};
 
   @override
@@ -29,7 +35,7 @@ class MemorySessionStore implements SessionStore {
 
   @override
   Future<void> put(String id, Map<String, dynamic> data, {Duration? ttl}) async {
-    final expiration = ttl ?? Duration(hours: 2);
+    final expiration = ttl ?? const Duration(hours: 2);
     _sessions[id] = _SessionEntry(
       Map<String, dynamic>.from(data),
       DateTime.now().add(expiration),
@@ -43,7 +49,8 @@ class MemorySessionStore implements SessionStore {
 }
 
 class _SessionEntry {
+  _SessionEntry(this.data, this.expiresAt);
+
   final Map<String, dynamic> data;
   final DateTime expiresAt;
-  _SessionEntry(this.data, this.expiresAt);
 }

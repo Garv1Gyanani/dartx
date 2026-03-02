@@ -6,13 +6,14 @@ import 'package:dotenv/dotenv.dart';
 /// It automatically loads values from a `.env` file if it exists and allows for
 /// runtime overrides.
 class Config {
+  /// Internal constructor for [Config].
+  Config();
+
   static final DotEnv _env = DotEnv(includePlatformEnvironment: true);
   static bool _isLoaded = false;
   static final Map<String, String> _overrides = {};
 
   /// Loads the `.env` file from the current working directory.
-  /// 
-  /// This is called automatically by the framework during [App] initialization.
   static void load() {
     if (_isLoaded) return;
     if (File('.env').existsSync()) {

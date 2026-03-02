@@ -1,8 +1,12 @@
 import 'package:kronix/kronix.dart';
 
+/// Simple User model for demonstration.
 class User {
-  final int id;
+  /// Creates a new [User].
   User(this.id);
+
+  /// The user's unique identifier.
+  final int id;
 }
 
 void main() async {
@@ -14,7 +18,7 @@ void main() async {
     if (id == null || id > 100) {
       throw NotFoundException('User with ID $id not found');
     }
-    return ctx.json({'user': id});
+    return ctx.json(<String, int>{'user': id});
   });
 
   // Route showing a 403

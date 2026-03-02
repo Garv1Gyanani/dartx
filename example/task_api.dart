@@ -6,27 +6,22 @@ import 'package:kronix/kronix.dart';
 /// --------------------------------------------------------------------------
 
 class Task extends Model {
+  /// The title of the task.
   String? title;
+  /// Whether the task is completed.
   bool completed = false;
 
+  /// Creates a new [Task].
   Task({this.title, this.completed = false});
 
   @override
-  String get table => 'tasks';
+  String get tableName => 'tasks';
 
   @override
-  Map<String, dynamic> toJson() => {
-    'id': id,
+  Map<String, dynamic> toMap() => {
     'title': title,
     'completed': completed,
   };
-
-  @override
-  void fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    title = json['title'];
-    completed = json['completed'] ?? false;
-  }
 }
 
 /// --------------------------------------------------------------------------
@@ -58,7 +53,7 @@ class TaskController {
 
   Future<Response> store(Context ctx) async {
     // This will automatically throw 422 if validation fails
-    final data = ctx.validate(CreateTaskRequest());
+    final data = await ctx.validate(CreateTaskRequest());
     
     final task = Task(
       title: data['title'],
@@ -71,7 +66,8 @@ class TaskController {
   }
 
   Future<Response> show(Context ctx) async {
-    final id = int.tryParse(ctx.params['id'] ?? '');
+    final idString = ctx.params['id'] ?? '';
+    final id = int.tryParse(idString);
     final task = _mockDb.firstWhere((t) => t.id == id, orElse: () => throw NotFoundException());
     
     return ctx.json(task);
@@ -114,7 +110,7 @@ Future<Response> loggerMiddleware(Context ctx, Next next) async {
   final response = await next();
   final duration = DateTime.now().difference(start);
   
-  print('[${ctx.requestId}] ${ctx.request.method} ${ctx.request.path} -> ${response.statusCode} (${duration.inMilliseconds}ms)');
+  print('[${ctx.requestId}] ${ctx.request.method} ${ctx.request.uri.path} -> ${response.statusCode} (${duration.inMilliseconds}ms)');
   
   return response;
 }

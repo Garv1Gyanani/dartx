@@ -4,7 +4,7 @@ import 'adapter.dart';
 
 /// A middleware that wraps the entire request lifecycle in a database transaction.
 /// 
-/// The active [DatabaseExecutor] is registered in the request-scoped [Container],
+/// The active [DatabaseExecutor] is registered in the request-scoped container,
 /// allowing any service resolved during this request to participate in the
 /// same transaction.
 /// 

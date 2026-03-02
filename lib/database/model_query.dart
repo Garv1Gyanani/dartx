@@ -13,11 +13,6 @@ import 'query_builder.dart';
 ///   .get();
 /// ```
 class ModelQuery<T extends Model> {
-  final DatabaseExecutor _executor;
-  final ModelFactory<T> _factory;
-  final String _tableName;
-  late final QueryBuilder _builder;
-
   /// Creates a typed query for models of type [T].
   ///
   /// [executor] is the database connection or transaction.
@@ -27,6 +22,11 @@ class ModelQuery<T extends Model> {
       : _tableName = tableName ?? _inferTableName<T>() {
     _builder = QueryBuilder(_tableName, _executor);
   }
+
+  final DatabaseExecutor _executor;
+  final ModelFactory<T> _factory;
+  final String _tableName;
+  late final QueryBuilder _builder;
 
   /// Infers table name from a dummy instance — falls back to lowercase type name + 's'.
   static String _inferTableName<T>() {
@@ -212,7 +212,8 @@ class ModelQuery<T extends Model> {
         .update(data);
 
     // Return a fresh copy from DB
-    return await findOrFail(model.id);
+    final id = model.id;
+    return await findOrFail(id);
   }
 
   /// Deletes a model by its primary key.
@@ -224,18 +225,16 @@ class ModelQuery<T extends Model> {
 
   /// Deletes a model instance from the database.
   Future<void> destroyModel(T model) async {
-    if (!model.exists) {
+    final id = model.id;
+    if (id == null) {
       throw StateError('Cannot delete a model that has not been persisted');
     }
-    await destroy(model.id);
+    await destroy(id);
     model.id = null;
   }
 
   /// Performs a bulk update on all rows matching the current query.
   Future<int> updateAll(Map<String, dynamic> data) async {
-    if (_builder.toString().isEmpty) {
-      throw StateError('Bulk update requires at least one WHERE clause');
-    }
     final result = await _builder.update(data);
     return result.affectedRows ?? 0;
   }
@@ -271,12 +270,7 @@ class ModelQuery<T extends Model> {
 
 /// Holds a paginated set of results with metadata.
 class PaginatedResult<T> {
-  final List<T> items;
-  final int total;
-  final int page;
-  final int perPage;
-  final int lastPage;
-
+  /// Creates a typed paginated result.
   PaginatedResult({
     required this.items,
     required this.total,
@@ -285,9 +279,23 @@ class PaginatedResult<T> {
     required this.lastPage,
   });
 
+  /// The list of items on this page.
+  final List<T> items;
+  /// The total number of items across all pages.
+  final int total;
+  /// The current page index (1-based).
+  final int page;
+  /// The maximum number of items per page.
+  final int perPage;
+  /// The total number of pages.
+  final int lastPage;
+
+  /// Returns `true` if there is a next page.
   bool get hasNextPage => page < lastPage;
+  /// Returns `true` if there is a previous page.
   bool get hasPrevPage => page > 1;
 
+  /// Converts the paginated result to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
     'data': items,
     'meta': {

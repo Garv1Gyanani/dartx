@@ -2,6 +2,9 @@
 /// 
 /// Extend this class to define your entity structure and mapping.
 abstract class Model {
+  /// Internal constructor for [Model].
+  Model({this.id});
+
   /// The primary key (auto-incrementing integer).
   int? id;
   

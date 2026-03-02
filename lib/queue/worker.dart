@@ -1,22 +1,29 @@
 import 'dart:async';
-import 'job.dart';
-import 'driver.dart';
-import 'metrics.dart';
 import '../core/logger.dart';
+import 'driver.dart';
+import 'job.dart';
+import 'metrics.dart';
 
 /// Callback triggered when a job's lifecycle state changes.
 typedef JobEventCallback = void Function(Job job);
 
 /// Exception thrown when a job exceeds its [Job.timeout] duration.
 class JobTimeoutException implements Exception {
-  final String jobId;
-  final String jobName;
-  final Duration timeout;
-
+  /// Creates a new [JobTimeoutException].
   JobTimeoutException(this.jobId, this.jobName, this.timeout);
 
+  /// The unique ID of the job that timed out.
+  final String jobId;
+
+  /// The logical name of the job that timed out.
+  final String jobName;
+
+  /// The duration that was exceeded.
+  final Duration timeout;
+
   @override
-  String toString() => 'JobTimeoutException: Job [$jobName] (id: $jobId) exceeded timeout of ${timeout.inSeconds}s';
+  String toString() =>
+      'JobTimeoutException: Job [$jobName] (id: $jobId) exceeded timeout of ${timeout.inSeconds}s';
 }
 
 /// The background worker that processes jobs from one or more queues.
@@ -36,6 +43,17 @@ class JobTimeoutException implements Exception {
 /// worker.start();
 /// ```
 class Worker {
+  /// Creates a new [Worker] instance.
+  Worker({
+    required this.driver,
+    this.queues = const ['default'],
+    this.pollInterval = const Duration(milliseconds: 500),
+    this.concurrency = 1,
+    this.maxJobsPerSecond = 0,
+    QueueMetrics? metrics,
+  }) : metrics = metrics ?? QueueMetrics();
+
+  /// The queue storage backend.
   final QueueDriver driver;
 
   /// The queues this worker listens to. Defaults to `['default']`.
@@ -55,11 +73,19 @@ class Worker {
   /// Metrics collector for this worker.
   final QueueMetrics metrics;
 
-  /// Lifecycle callbacks
+  /// Callback triggered when a job begins processing.
   JobEventCallback? onProcess;
+
+  /// Callback triggered when a job completes successfully.
   JobEventCallback? onComplete;
+
+  /// Callback triggered when a job is scheduled for retry.
   JobEventCallback? onRetry;
+
+  /// Callback triggered when a job permanently fails.
   JobEventCallback? onFail;
+
+  /// Callback triggered when a job times out.
   JobEventCallback? onTimeout;
 
   bool _running = false;
@@ -77,15 +103,6 @@ class Worker {
   /// Returns the number of jobs currently being processed.
   int get activeJobs => _activeJobs;
 
-  Worker({
-    required this.driver,
-    this.queues = const ['default'],
-    this.pollInterval = const Duration(milliseconds: 500),
-    this.concurrency = 1,
-    this.maxJobsPerSecond = 0,
-    QueueMetrics? metrics,
-  }) : metrics = metrics ?? QueueMetrics();
-
   /// Starts the worker loop. The returned future completes when [stop] is called.
   Future<void> start() async {
     if (_running) return;
@@ -93,7 +110,9 @@ class Worker {
     _stopCompleter = Completer<void>();
     metrics.start();
 
-    Logger.staticInfo('⚙️  Worker started — queues: ${queues.join(", ")} (concurrency: $concurrency${maxJobsPerSecond > 0 ? ', rate: ${maxJobsPerSecond}/s' : ''})');
+    Logger.staticInfo(
+      '⚙️  Worker started — queues: ${queues.join(", ")} (concurrency: $concurrency${maxJobsPerSecond > 0 ? ', rate: ${maxJobsPerSecond}/s' : ''})',
+    );
 
     // Start rate limit reset timer if rate limiting is enabled
     if (maxJobsPerSecond > 0) {
@@ -121,7 +140,7 @@ class Worker {
     // Wait for active jobs to drain (with a safety timeout)
     final deadline = DateTime.now().add(const Duration(seconds: 30));
     while (_activeJobs > 0 && DateTime.now().isBefore(deadline)) {
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
     }
 
     if (_activeJobs > 0) {
@@ -129,8 +148,9 @@ class Worker {
     }
 
     Logger.staticInfo('⚙️  Worker stopped.');
-    if (_stopCompleter != null && !_stopCompleter!.isCompleted) {
-      _stopCompleter!.complete();
+    final completer = _stopCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
     }
   }
 
@@ -176,15 +196,18 @@ class Worker {
 
     onProcess?.call(job);
     metrics.recordProcessing();
-    Logger.staticInfo('📋 Processing [${job.name}] (id: ${job.id}, attempt ${job.attempts}/${job.maxRetries})');
+    Logger.staticInfo(
+      '📋 Processing [${job.name}] (id: ${job.id}, attempt ${job.attempts}/${job.maxRetries})',
+    );
 
     try {
       // Execute with timeout protection
-      if (job.timeout != null) {
+      final timeoutVal = job.timeout;
+      if (timeoutVal != null) {
         await job.handle().timeout(
-          job.timeout!,
+          timeoutVal,
           onTimeout: () {
-            throw JobTimeoutException(job.id, job.name, job.timeout!);
+            throw JobTimeoutException(job.id, job.name, timeoutVal);
           },
         );
       } else {
@@ -199,7 +222,9 @@ class Worker {
       await driver.complete(job);
       onComplete?.call(job);
       metrics.recordSuccess(stopwatch.elapsed);
-      Logger.staticInfo('✅ [${job.name}] completed in ${stopwatch.elapsedMilliseconds}ms (id: ${job.id})');
+      Logger.staticInfo(
+        '✅ [${job.name}] completed in ${stopwatch.elapsedMilliseconds}ms (id: ${job.id})',
+      );
     } on JobTimeoutException catch (error, stackTrace) {
       stopwatch.stop();
       job.lastError = error;
@@ -207,19 +232,30 @@ class Worker {
       metrics.recordTimeout();
       onTimeout?.call(job);
 
-      Logger.staticInfo('⏱️  [${job.name}] TIMED OUT after ${job.timeout!.inSeconds}s (attempt ${job.attempts}/${job.maxRetries})');
+      final timeoutVal = job.timeout;
+      if (timeoutVal != null) {
+        Logger.staticInfo(
+          '⏱️  [${job.name}] TIMED OUT after ${timeoutVal.inSeconds}s (attempt ${job.attempts}/${job.maxRetries})',
+        );
+      }
 
       // Timeout is treated as a failure — eligible for retry
-      try { await job.onFailure(error, stackTrace); } catch (_) {}
+      try {
+        await job.onFailure(error, stackTrace);
+      } catch (_) {}
       await _handleFailure(job, error, stackTrace);
     } catch (error, stackTrace) {
       stopwatch.stop();
       job.lastError = error;
       job.lastStackTrace = stackTrace;
 
-      Logger.staticInfo('❌ [${job.name}] failed (attempt ${job.attempts}/${job.maxRetries}): $error');
+      Logger.staticInfo(
+        '❌ [${job.name}] failed (attempt ${job.attempts}/${job.maxRetries}): $error',
+      );
 
-      try { await job.onFailure(error, stackTrace); } catch (_) {}
+      try {
+        await job.onFailure(error, stackTrace);
+      } catch (_) {}
       await _handleFailure(job, error, stackTrace);
     }
   }
@@ -241,9 +277,13 @@ class Worker {
       onFail?.call(job);
       metrics.recordPermanentFailure();
 
-      try { await job.onPermanentFailure(error, stackTrace); } catch (_) {}
+      try {
+        await job.onPermanentFailure(error, stackTrace);
+      } catch (_) {}
 
-      Logger.staticInfo('💀 [${job.name}] permanently failed after ${job.attempts} attempts → dead letter queue (id: ${job.id})');
+      Logger.staticInfo(
+        '💀 [${job.name}] permanently failed after ${job.attempts} attempts → dead letter queue (id: ${job.id})',
+      );
     }
   }
 }

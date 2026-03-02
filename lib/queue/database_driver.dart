@@ -1,26 +1,12 @@
 import 'dart:async';
-import 'job.dart';
-import 'driver.dart';
 import '../database/adapter.dart';
+import 'driver.dart';
+import 'job.dart';
 
 /// A record representing a database-backed job row.
 ///
 /// Used by [DatabaseQueueDriver] to hydrate [Job] instances from the database.
-/// Since we can't reconstruct the original Dart class from a DB row, callers
-/// must register a job factory via [DatabaseQueueDriver.registerJobFactory].
 class _JobRow {
-  final String id;
-  final String name;
-  final String queue;
-  final String status;
-  final int attempts;
-  final int maxRetries;
-  final String? lastError;
-  final String? payload;
-  final DateTime createdAt;
-  final DateTime? availableAt;
-  final DateTime? finishedAt;
-
   _JobRow({
     required this.id,
     required this.name,
@@ -45,19 +31,31 @@ class _JobRow {
         lastError: row['last_error'] as String?,
         payload: row['payload'] as String?,
         createdAt: row['created_at'] is DateTime
-            ? row['created_at']
+            ? row['created_at'] as DateTime
             : DateTime.parse(row['created_at'].toString()),
         availableAt: row['available_at'] != null
             ? (row['available_at'] is DateTime
-                ? row['available_at']
+                ? row['available_at'] as DateTime
                 : DateTime.parse(row['available_at'].toString()))
             : null,
         finishedAt: row['finished_at'] != null
             ? (row['finished_at'] is DateTime
-                ? row['finished_at']
+                ? row['finished_at'] as DateTime
                 : DateTime.parse(row['finished_at'].toString()))
             : null,
       );
+
+  final String id;
+  final String name;
+  final String queue;
+  final String status;
+  final int attempts;
+  final int maxRetries;
+  final String? lastError;
+  final String? payload;
+  final DateTime createdAt;
+  final DateTime? availableAt;
+  final DateTime? finishedAt;
 }
 
 /// A factory function that reconstructs a [Job] from its stored name and payload.
@@ -91,14 +89,6 @@ typedef JobFactory = Job Function(String? payload);
 /// CREATE INDEX idx_kronix_jobs_pop ON kronix_jobs(queue, status, available_at);
 /// ```
 class DatabaseQueueDriver implements QueueDriver {
-  final DatabaseAdapter _db;
-  final String _table;
-
-  /// A unique worker identifier used for distributed locking.
-  final String workerId;
-
-  final Map<String, JobFactory> _factories = {};
-
   /// Creates a new [DatabaseQueueDriver].
   ///
   /// [db] - The database adapter to use.
@@ -111,6 +101,14 @@ class DatabaseQueueDriver implements QueueDriver {
   })  : _db = db,
         _table = table,
         workerId = workerId ?? 'worker_${DateTime.now().millisecondsSinceEpoch}';
+
+  final DatabaseAdapter _db;
+  final String _table;
+
+  /// A unique worker identifier used for distributed locking.
+  final String workerId;
+
+  final Map<String, JobFactory> _factories = {};
 
   /// Registers a factory to reconstruct a [Job] of the given [name] from a payload.
   ///
@@ -151,8 +149,9 @@ class DatabaseQueueDriver implements QueueDriver {
   @override
   Future<void> push(Job job, [String queue = 'default']) async {
     String? payload;
-    if (job is SerializableJob) {
-      payload = job.serialize();
+    final currentJob = job;
+    if (currentJob is SerializableJob) {
+      payload = currentJob.serialize();
     }
 
     await _db.query('''
@@ -293,7 +292,7 @@ class DatabaseQueueDriver implements QueueDriver {
   }
 
   /// Returns aggregate metrics from the database.
-  Future<Map<String, dynamic>> stats() async {
+  Future<Map<String, dynamic>> fetchStats() async {
     final result = await _db.query('''
       SELECT
         status,
@@ -338,20 +337,22 @@ class DatabaseQueueDriver implements QueueDriver {
     }
 
     final job = factory(row.payload);
-    // Restore state from DB — we use a helper to avoid the `late final` restriction on id
+    // Restore state from DB
     _restoreJobState(job, row);
     return job;
   }
 
   void _restoreJobState(Job job, _JobRow row) {
-    // Note: `id` and `createdAt` are `late final` and set in Job constructor,
-    // so we can't override them. The factory must create the job fresh.
-    // The DB row's attempts/status are the source of truth.
+    // Note: attempts/status in job/row must match.
     job.attempts = row.attempts;
-    job.status = JobStatus.values.firstWhere((s) => s.name == row.status, orElse: () => JobStatus.pending);
+    job.status = JobStatus.values.firstWhere(
+      (s) => s.name == row.status, 
+      orElse: () => JobStatus.pending,
+    );
     job.availableAt = row.availableAt;
-    if (row.lastError != null) {
-      job.lastError = row.lastError;
+    final rError = row.lastError;
+    if (rError != null) {
+      job.lastError = rError;
     }
   }
 }

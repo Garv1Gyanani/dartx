@@ -4,6 +4,9 @@ import '../di/container.dart';
 
 /// Abstract interface for file storage systems.
 abstract class Storage {
+  /// Internal constructor for [Storage].
+  Storage();
+
   /// Stores the [bytes] at the specified [path].
   /// 
   /// Returns the path where the file was stored.
@@ -29,14 +32,14 @@ abstract class Storage {
 
 /// A [Storage] implementation that uses the local filesystem.
 class LocalStorage implements Storage {
+  /// Creates a new [LocalStorage] instance.
+  LocalStorage({required this.root, this.baseUrl = '/storage'});
+
   /// The root directory where files are stored.
   final String root;
 
   /// The base URL for serving files stored in this root.
   final String baseUrl;
-
-  /// Creates a new [LocalStorage] instance.
-  LocalStorage({required this.root, this.baseUrl = '/storage'});
 
   @override
   Future<String> put(String path, List<int> bytes) async {

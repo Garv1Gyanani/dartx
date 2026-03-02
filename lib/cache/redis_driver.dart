@@ -2,15 +2,19 @@ import 'dart:convert';
 import 'package:redis/redis.dart';
 import 'driver.dart';
 
-/// A Redis-backed cache driver.
+/// A Redis-backed implementation of the [CacheDriver] interface.
 class RedisCacheDriver implements CacheDriver {
+  /// The Redis server host.
   final String host;
+  /// The Redis server port.
   final int port;
+  /// The password for authentication, if any.
   final String? password;
   
   Command? _command;
   late final RedisConnection _conn;
 
+  /// Creates a new [RedisCacheDriver] instance.
   RedisCacheDriver({
     this.host = 'localhost',
     this.port = 6379,
@@ -59,18 +63,22 @@ class RedisCacheDriver implements CacheDriver {
   Future<int> increment(String key, [int value = 1]) async {
     final cmd = await _getCommand();
     if (value == 1) {
-      return await cmd.send_object(['INCR', key]);
+      final res = await cmd.send_object(['INCR', key]);
+      return res is int ? res : int.parse(res.toString());
     }
-    return await cmd.send_object(['INCRBY', key, value]);
+    final res = await cmd.send_object(['INCRBY', key, value]);
+    return res is int ? res : int.parse(res.toString());
   }
 
   @override
   Future<int> decrement(String key, [int value = 1]) async {
     final cmd = await _getCommand();
     if (value == 1) {
-      return await cmd.send_object(['DECR', key]);
+      final res = await cmd.send_object(['DECR', key]);
+      return res is int ? res : int.parse(res.toString());
     }
-    return await cmd.send_object(['DECRBY', key, value]);
+    final res = await cmd.send_object(['DECRBY', key, value]);
+    return res is int ? res : int.parse(res.toString());
   }
 
   @override
@@ -92,9 +100,9 @@ class RedisCacheDriver implements CacheDriver {
     return result == 1;
   }
 
+  /// Closes the underlying Redis connection.
   Future<void> close() async {
-    if (_command != null) {
-      // redis package doesn't have a direct close, but the Conn object does.
-    }
+    // Note: The redis package doesn't provide a direct way to close the command stream here,
+    // but the connection is managed by the client.
   }
 }

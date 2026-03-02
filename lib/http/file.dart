@@ -10,6 +10,15 @@ import 'package:path/path.dart' as p;
 /// from the client. Always use [safeFilename] when constructing file paths
 /// to prevent path traversal attacks.
 class UploadedFile {
+  /// Creates a new [UploadedFile] instance.
+  UploadedFile({
+    required this.filename,
+    required this.contentType,
+    required this.tempPath,
+    required this.size,
+    this.tempDir,
+  });
+
   /// The original filename as provided by the client.
   /// 
   /// ⚠️ This is **untrusted** user input. Never use it directly in file paths.
@@ -29,15 +38,6 @@ class UploadedFile {
   final int size;
 
   bool _deleted = false;
-
-  /// Creates a new [UploadedFile] instance.
-  UploadedFile({
-    required this.filename,
-    required this.contentType,
-    required this.tempPath,
-    required this.size,
-    this.tempDir,
-  });
 
   /// Returns a sanitized version of [filename] safe for use in file paths.
   /// 
@@ -108,9 +108,10 @@ class UploadedFile {
       _deleted = true;
 
       // Clean up the now-empty temp directory
-      if (tempDir != null) {
+      final dirVal = tempDir;
+      if (dirVal != null) {
         try {
-          final dir = Directory(tempDir!);
+          final dir = Directory(dirVal);
           if (await dir.exists()) {
             await dir.delete(recursive: true);
           }
@@ -128,15 +129,16 @@ class UploadedFile {
 
   /// Deletes the temporary file and directory. 
   /// 
-  /// This is handled automatically by [Context.dispose()] if not already called.
+  /// This is handled automatically by context disposal if not already called.
   /// Safe to call multiple times — subsequent calls are no-ops.
   Future<void> delete() async {
     if (_deleted) return;
     _deleted = true;
     
     try {
-      if (tempDir != null) {
-        final dir = Directory(tempDir!);
+      final dirVal = tempDir;
+      if (dirVal != null) {
+        final dir = Directory(dirVal);
         if (await dir.exists()) {
           await dir.delete(recursive: true);
         }

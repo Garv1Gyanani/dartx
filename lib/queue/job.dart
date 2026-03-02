@@ -1,13 +1,22 @@
 import 'dart:math';
 
 /// The current state of a [Job] in the queue lifecycle.
-enum JobStatus { pending, processing, completed, failed }
+enum JobStatus { 
+  /// Job is waiting to be processed.
+  pending, 
+  /// Job is currently being handled by a worker.
+  processing, 
+  /// Job was successfully processed.
+  completed, 
+  /// Job failed to process and has no more retries.
+  failed 
+}
 
 /// Base class for all queueable jobs.
 ///
 /// Extend this class and implement [handle] to define the work
 /// your job performs. Override [maxRetries], [retryDelay], [timeout],
-/// and [queue] to control retry behaviour, timeouts, and queue routing.
+/// and [queue] to control retry behavior, timeouts, and queue routing.
 ///
 /// ```dart
 /// class SendEmailJob extends Job {
@@ -31,6 +40,12 @@ enum JobStatus { pending, processing, completed, failed }
 /// }
 /// ```
 abstract class Job {
+  /// Creates a new [Job] instance and generates a unique ID.
+  Job() {
+    id = _generateId();
+    createdAt = DateTime.now();
+  }
+
   /// A unique ID generated for each job instance.
   late final String id;
 
@@ -73,11 +88,6 @@ abstract class Job {
   /// When this job should next be processed (for delayed/retry scheduling).
   DateTime? availableAt;
 
-  Job() {
-    id = _generateId();
-    createdAt = DateTime.now();
-  }
-
   /// The work this job performs. Override in your subclass.
   Future<void> handle();
 
@@ -108,6 +118,7 @@ abstract class Job {
     return 'job_${ts}_$rand';
   }
 
+  /// Converts the job to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,

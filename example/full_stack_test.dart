@@ -18,15 +18,13 @@ class CreateProductRequest extends FormRequest {
 // 3. MOCK DB
 class MockDB extends DatabaseAdapter {
   @override
-  QueryBuilder table(String name) => QueryBuilder(name, this);
+  QueryBuilder table(String name, [DatabaseExecutor? executor]) => QueryBuilder(name, executor ?? this);
   @override
   Future<QueryResult> query(String sql, [Map<String, dynamic>? params]) async {
     return PostgresQueryResult([{'id': 101, 'status': 'inserted'}]);
   }
   @override
   Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback) async => await callback(MockExecutor());
-  @override
-  Future<DatabaseExecutor> beginTransaction() => throw UnimplementedError();
   @override
   Future<void> connect() async {}
   @override
@@ -37,9 +35,7 @@ class MockExecutor implements DatabaseExecutor {
   @override
   Future<QueryResult> query(String sql, [Map<String, dynamic>? params]) async => PostgresQueryResult([]);
   @override
-  Future<void> commit() async {}
-  @override
-  Future<void> rollback() async {}
+  Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback) async => await callback(this);
 }
 
 void main() async {
@@ -62,7 +58,7 @@ void main() async {
     
     // Test 1: Validation & Scoped DI
     router.add('POST', '/products', (ctx) async {
-      final data = ctx.validate(CreateProductRequest());
+      final data = await ctx.validate(CreateProductRequest());
       final stats = ctx.resolve<StatsService>();
       
       return ctx.json({

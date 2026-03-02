@@ -2,6 +2,9 @@ import 'dart:async';
 
 /// Interface for classes that define validation rules and messages.
 abstract class FormRequest {
+  /// Internal constructor for [FormRequest].
+  FormRequest();
+
   /// Returns a map of field names to validation rule strings (e.g., 'required|email').
   Map<String, String> rules();
 
@@ -14,20 +17,36 @@ typedef RuleHandler = FutureOr<bool> Function(dynamic value, String? arg, Map<St
 
 /// Result of a validation operation containing errors and coerced data.
 class ValidationResult {
-  final Map<String, List<String>> errors;
-  final Map<String, dynamic> data;
-
+  /// Creates a new [ValidationResult].
   ValidationResult(this.errors, this.data);
 
+  /// A map of field names to lists of error messages.
+  final Map<String, List<String>> errors;
+
+  /// The validated and potentially coerced data.
+  final Map<String, dynamic> data;
+
+  /// Returns `true` if validation failed.
   bool get fails => errors.isNotEmpty;
+
+  /// Returns `true` if validation passed.
   bool get passes => errors.isEmpty;
 }
 
 /// The core validation engine for the Kronix framework.
 class Validator {
+  /// Internal constructor for [Validator].
+  Validator();
+
   /// Registry of validation rules. Can be extended by users to add custom rules.
   static final Map<String, RuleHandler> ruleHandlers = {
-    'required': (val, _, __) => val != null && val.toString().trim().isNotEmpty,
+    'required': (val, _, __) {
+      if (val == null) return false;
+      if (val is String) return val.trim().isNotEmpty;
+      if (val is List) return val.isNotEmpty;
+      if (val is Map) return val.isNotEmpty;
+      return true;
+    },
     'email': (val, _, __) {
       if (val == null || val.toString().isEmpty) return true;
       return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
@@ -81,7 +100,8 @@ class Validator {
     'string': (val, _, __) => val is String,
     'array': (val, _, __) => val is List,
     'alpha': (val, _, __) => val == null || RegExp(r'^[a-zA-Z]+$').hasMatch(val.toString()),
-    'alpha_num': (val, _, __) => val == null || RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.toString()),
+    'alpha_num': (val, _, __) =>
+        val == null || RegExp(r'^[a-zA-Z0-9]+$').hasMatch(val.toString()),
     'regex': (val, arg, __) {
       if (val == null || arg == null) return true;
       try {
@@ -102,8 +122,8 @@ class Validator {
     Map<String, String> rules, [
     Map<String, String>? customMessages,
   ]) async {
-    final Map<String, List<String>> errors = {};
-    final Map<String, dynamic> validatedData = {};
+    final errors = <String, List<String>>{};
+    final validatedData = <String, dynamic>{};
 
     // 1. Expand wildcards (e.g. items.*.name)
     final expandedRules = <String, String>{};
@@ -125,8 +145,8 @@ class Validator {
       final fieldRules = ruleString.split('|');
       final value = _getNestedValue(data, field);
 
-      bool fieldFailed = false;
-      bool shouldBail = fieldRules.contains('bail');
+      var fieldFailed = false;
+      final shouldBail = fieldRules.contains('bail');
 
       for (final rule in fieldRules) {
         if (rule == 'bail') continue;
@@ -147,7 +167,7 @@ class Validator {
             errors[field] ??= [];
             errors[field]!.add(message);
             fieldFailed = true;
-            
+
             // Short-circuit on first failure if bail is set or if required fails
             if (shouldBail || ruleName == 'required') break;
           }
@@ -168,20 +188,20 @@ class Validator {
     if (!path.contains('*')) return [path];
 
     final segments = path.split('.');
-    List<String> results = [''];
+    var results = <String>[''];
 
-    for (int i = 0; i < segments.length; i++) {
+    for (var i = 0; i < segments.length; i++) {
       final segment = segments[i];
-      final List<String> nextResults = [];
+      final nextResults = <String>[];
 
       for (final currentPath in results) {
         final prefix = currentPath.isEmpty ? '' : '$currentPath.';
-        
+
         if (segment == '*') {
           // Resolve actual data to see how many items we have
           final resolved = _getNestedValue(data, currentPath);
           if (resolved is List) {
-            for (int index = 0; index < resolved.length; index++) {
+            for (var index = 0; index < resolved.length; index++) {
               nextResults.add('$prefix$index');
             }
           }
@@ -205,7 +225,7 @@ class Validator {
       }
       return null;
     }
-    
+
     dynamic current = data;
     for (final segment in path.split('.')) {
       if (current is Map && current.containsKey(segment)) {
@@ -232,17 +252,20 @@ class Validator {
 
     final segments = path.split('.');
     dynamic current = data;
-    for (int i = 0; i < segments.length - 1; i++) {
+    for (var i = 0; i < segments.length - 1; i++) {
       final segment = segments[i];
       final nextSegment = segments[i + 1];
       final isNextIndex = int.tryParse(nextSegment) != null;
 
       if (current is Map) {
-        current = current.putIfAbsent(segment, () => isNextIndex ? [] : <String, dynamic>{});
+        current = current.putIfAbsent(
+          segment,
+          () => isNextIndex ? <dynamic>[] : <String, dynamic>{},
+        );
       } else if (current is List) {
         final index = int.parse(segment);
         while (current.length <= index) {
-          current.add(isNextIndex ? [] : <String, dynamic>{});
+          current.add(isNextIndex ? <dynamic>[] : <String, dynamic>{});
         }
         current = current[index];
       }
@@ -262,7 +285,7 @@ class Validator {
 
   static dynamic _coerceValue(dynamic value, List<String> rules) {
     if (value == null) return null;
-    
+
     if (rules.contains('integer')) {
       return int.tryParse(value.toString()) ?? value;
     }
@@ -277,30 +300,52 @@ class Validator {
     return value;
   }
 
-  static String _getMessage(String field, String rule, String? arg, Map<String, String>? customMessages) {
+  static String _getMessage(
+    String field,
+    String rule,
+    String? arg,
+    Map<String, String>? customMessages,
+  ) {
     final key = '$field.$rule';
     if (customMessages != null && customMessages.containsKey(key)) {
       return customMessages[key]!;
     }
 
     switch (rule) {
-      case 'required': return 'The $field field is required.';
-      case 'email': return 'The $field must be a valid email address.';
-      case 'min': return 'The $field must be at least $arg.';
-      case 'max': return 'The $field may not be greater than $arg.';
-      case 'numeric': return 'The $field must be a number.';
-      case 'integer': return 'The $field must be an integer.';
-      case 'boolean': return 'The $field field must be true or false.';
-      case 'in': return 'The selected $field is invalid.';
-      case 'not_in': return 'The selected $field is invalid.';
-      case 'url': return 'The $field format is invalid.';
-      case 'string': return 'The $field must be a string.';
-      case 'array': return 'The $field must be an array.';
-      case 'alpha': return 'The $field may only contain letters.';
-      case 'alpha_num': return 'The $field may only contain letters and numbers.';
-      case 'regex': return 'The $field format is invalid.';
-      case 'confirmed': return 'The $field confirmation does not match.';
-      default: return 'The $field field is invalid.';
+      case 'required':
+        return 'The $field field is required.';
+      case 'email':
+        return 'The $field must be a valid email address.';
+      case 'min':
+        return 'The $field must be at least $arg.';
+      case 'max':
+        return 'The $field may not be greater than $arg.';
+      case 'numeric':
+        return 'The $field must be a number.';
+      case 'integer':
+        return 'The $field must be an integer.';
+      case 'boolean':
+        return 'The $field field must be true or false.';
+      case 'in':
+        return 'The selected $field is invalid.';
+      case 'not_in':
+        return 'The selected $field is invalid.';
+      case 'url':
+        return 'The $field format is invalid.';
+      case 'string':
+        return 'The $field must be a string.';
+      case 'array':
+        return 'The $field must be an array.';
+      case 'alpha':
+        return 'The $field may only contain letters.';
+      case 'alpha_num':
+        return 'The $field may only contain letters and numbers.';
+      case 'regex':
+        return 'The $field format is invalid.';
+      case 'confirmed':
+        return 'The $field confirmation does not match.';
+      default:
+        return 'The $field field is invalid.';
     }
   }
 }

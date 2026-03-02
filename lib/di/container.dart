@@ -1,9 +1,14 @@
+import 'dart:async';
+
 /// An interface for services that require explicit cleanup at the end of a lifecycle.
 /// 
 /// Implementing [Disposable] allows a service to perform asynchronous cleanup
 /// (e.g., closing database connections or clearing cache buffers) when the
-/// [Container] is disposed.
+/// container is disposed.
 abstract class Disposable {
+  /// Internal constructor for [Disposable].
+  Disposable();
+
   /// Performs cleanup operations.
   Future<void> dispose();
 }
@@ -13,6 +18,9 @@ abstract class Disposable {
 /// The [Container] supports singletons, factories, and scoped instances.
 /// It can be nested to create isolated scopes (e.g., per-request).
 class Container {
+  /// Creates a new [Container], optionally delegating to a [parent].
+  Container({this.parent});
+
   /// The parent container to delegate to if a service is not found locally.
   final Container? parent;
   final Map<String, dynamic> _singletons = {};
@@ -20,10 +28,7 @@ class Container {
   final Map<String, dynamic Function(Container)> _scopedFactories = {};
   final Map<String, dynamic> _instances = {}; // For scoped instances in this container
 
-  /// Creates a new [Container], optionally delegating to a [parent].
-  Container({this.parent});
-
-  String _key<T>([String? name]) => "${T.toString()}${name != null ? ':$name' : ''}";
+  String _key<T>([String? name]) => '${T.toString()}${name != null ? ':$name' : ''}';
 
   /// Registers an [instance] locally in this container.
   void instance<T>(T instance, {String? name}) => _instances[_key<T>(name)] = instance;
@@ -37,9 +42,9 @@ class Container {
   /// Registers a [factory] that will be executed once and its result stored as a singleton.
   void lazySingleton<T>(T Function(Container) factory, {String? name}) {
     _factories[_key<T>(name)] = (c) {
-      final instance = factory(c);
-      _singletons[_key<T>(name)] = instance;
-      return instance;
+      final res = factory(c);
+      _singletons[_key<T>(name)] = res;
+      return res;
     };
   }
 
@@ -75,18 +80,19 @@ class Container {
     if (_singletons.containsKey(key)) return _singletons[key] as T;
 
     if (_scopedFactories.containsKey(key)) {
-      final instance = _scopedFactories[key]!(this);
-      _instances[key] = instance;
-      return instance as T;
+      final res = _scopedFactories[key]!(this);
+      _instances[key] = res;
+      return res as T;
     }
 
     if (_factories.containsKey(key)) {
-      final instance = _factories[key]!(this);
-      return instance as T;
+      final res = _factories[key]!(this);
+      return res as T;
     }
 
-    if (parent != null) {
-      return parent!.resolve<T>(name: name);
+    final p = parent;
+    if (p != null) {
+      return p.resolve<T>(name: name);
     }
 
     throw Exception('Service $key not registered in this container or any of its parents.');
@@ -94,11 +100,11 @@ class Container {
 
   /// Disposes of all locally registered instances that implement [Disposable].
   Future<void> dispose() async {
-    for (var instance in _instances.values.toList()) {
-      if (instance is Disposable) {
+    for (final res in _instances.values.toList()) {
+      if (res is Disposable) {
         try {
-          await instance.dispose();
-        } catch (e) {
+          await res.dispose();
+        } catch (_) {
           // In a framework, we should probably log this but not let it crash the request loop
         }
       }

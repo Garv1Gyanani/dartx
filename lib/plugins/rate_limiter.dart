@@ -4,6 +4,9 @@ import '../http/response.dart';
 
 /// A simple in-memory rate limiter middleware.
 class RateLimiter {
+  /// Creates a new [RateLimiter] instance.
+  RateLimiter({this.maxRequests = 100, this.window = const Duration(minutes: 1)});
+
   /// The maximum number of requests allowed within the [window].
   final int maxRequests;
 
@@ -12,19 +15,17 @@ class RateLimiter {
   
   final Map<String, List<DateTime>> _requests = {};
 
-  /// Creates a new [RateLimiter] instance.
-  RateLimiter({this.maxRequests = 100, this.window = const Duration(minutes: 1)});
-
   /// Returns a [Middleware] that enforces the rate limit.
   Middleware handle() {
     return (Context ctx, Next next) async {
       final ip = ctx.request.rawRequest.connectionInfo?.remoteAddress.address ?? 'unknown';
       final now = DateTime.now();
       
-      _requests[ip] ??= [];
-      _requests[ip] = _requests[ip]!.where((d) => now.difference(d) < window).toList();
+      final clientRequests = _requests[ip] ??= [];
+      final recentRequests = clientRequests.where((d) => now.difference(d) < window).toList();
+      _requests[ip] = recentRequests;
       
-      if (_requests[ip]!.length >= maxRequests) {
+      if (recentRequests.length >= maxRequests) {
         return Response(
           statusCode: 429, 
           body: 'Too Many Requests',
@@ -32,8 +33,8 @@ class RateLimiter {
         );
       }
       
-      _requests[ip]!.add(now);
-      return await next();
+      recentRequests.add(now);
+      return next();
     };
   }
 }

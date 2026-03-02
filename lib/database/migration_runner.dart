@@ -8,15 +8,15 @@ import '../core/logger.dart';
 /// fails, only that migration is rolled back and execution stops.
 /// An advisory lock is acquired to prevent concurrent migration runs.
 class MigrationRunner {
+  /// Creates a new [MigrationRunner] with the database [db] and a [registry] of migrations.
+  MigrationRunner(this._db, this._registry);
+
   final DatabaseAdapter _db;
   final List<MigrationEntry> _registry;
 
   /// The advisory lock ID used to prevent concurrent migration runs.
   /// This should be a unique constant per application.
   static const int _advisoryLockId = 726391;
-
-  /// Creates a new [MigrationRunner] with the database [db] and a [registry] of migrations.
-  MigrationRunner(this._db, this._registry);
 
   /// Runs all pending migrations that haven't been applied yet.
   /// 
@@ -43,9 +43,9 @@ class MigrationRunner {
 
       // Calculate the next batch number ONCE for the entire run
       final batch = await _getNextBatchNumber();
-      int successCount = 0;
+      var successCount = 0;
 
-      for (var entry in pending) {
+      for (final entry in pending) {
         Logger.staticInfo('🚀 Migrating: ${entry.name}');
         
         try {
@@ -92,7 +92,7 @@ class MigrationRunner {
         return;
       }
 
-      for (var name in last.reversed) {
+      for (final name in last.reversed) {
         final entry = _registry.cast<MigrationEntry?>().firstWhere(
           (e) => e!.name == name,
           orElse: () => null,
@@ -176,12 +176,12 @@ class MigrationRunner {
 
 /// Represents a single migration entry in the [MigrationRunner] registry.
 class MigrationEntry {
+  /// Creates a new [MigrationEntry].
+  MigrationEntry(this.name, this.migration);
+
   /// The unique name of the migration (usually a timestamp prefix + title).
   final String name;
 
   /// The migration instance to execute.
   final Migration migration;
-
-  /// Creates a new [MigrationEntry].
-  MigrationEntry(this.name, this.migration);
 }

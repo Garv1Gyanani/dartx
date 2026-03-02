@@ -1,29 +1,54 @@
-import 'dart:io' hide HttpException;
-import 'dart:convert';
 import 'dart:async';
-import 'router.dart';
-import 'middleware.dart';
-import 'context.dart';
-import 'logger.dart';
-import 'config.dart';
-import 'exceptions.dart';
-import 'exception_handler.dart';
+import 'dart:convert';
+import 'dart:io' hide HttpException;
+
+import 'package:mime/mime.dart';
+
 import '../di/container.dart';
+import '../filesystem/storage.dart';
+import '../http/file.dart';
 import '../http/request.dart';
 import '../http/response.dart';
-
-import 'websocket.dart';
-import 'package:mime/mime.dart';
-import '../http/file.dart';
-import '../filesystem/storage.dart';
-import '../queue/queue.dart';
 import '../queue/driver.dart';
+import '../queue/queue.dart';
+import 'config.dart';
+import 'context.dart';
+import 'exception_handler.dart';
+import 'exceptions.dart';
+import 'logger.dart';
+import 'middleware.dart';
+import 'router.dart';
+import 'websocket.dart';
 
-/// The main entry point for a kronix application.
-/// 
+/// The main entry point for a Kronix application.
+///
 /// The [App] class manages the HTTP server lifecycle, routing registration,
 /// and the global middleware pipeline.
 class App {
+  /// Initializes a new [App] instance.
+  ///
+  /// During initialization, the framework:
+  /// 1. Loads configuration from `.env`.
+  /// 2. Registers the [Router], [ExceptionHandler], and [WebSocketHub] into the global DI container.
+  /// 3. Sets up system health and readiness routes.
+  App() {
+    Config.load();
+    di.singleton(_router);
+    di.singleton<ExceptionHandler>(exceptionHandler);
+    di.singleton(_wsHub);
+    di.singleton<Storage>(LocalStorage(
+      root: Config.get('STORAGE_ROOT', 'storage')!,
+      baseUrl: Config.get('STORAGE_URL', '/storage')!,
+    ));
+
+    // Resolve Queue driver from config
+    final queueDriverName = Config.get('QUEUE_DRIVER', 'memory')!;
+    final driver = _resolveQueueDriver(queueDriverName);
+    di.singleton<Queue>(Queue(driver: driver));
+
+    _setupDefaultRoutes();
+  }
+
   final Router _router = Router();
   final Pipeline _pipeline = Pipeline();
   final WebSocketHub _wsHub = WebSocketHub();
@@ -41,7 +66,7 @@ class App {
 
   /// Provides access to the global [WebSocketHub].
   WebSocketHub get wsHub => _wsHub;
-  
+
   /// Returns the total number of active connections (HTTP + WebSocket).
   int get activeRequests => _activeHttpCounter + _activeWSCounter;
 
@@ -50,30 +75,6 @@ class App {
 
   /// Returns the number of active WebSocket connections.
   int get activeWebSockets => _activeWSCounter;
-  
-  /// Initializes a new kronix application.
-  /// 
-  /// During initialization, the framework:
-  /// 1. Loads configuration from `.env`.
-  /// 2. Registers the [Router], [ExceptionHandler], and [WebSocketHub] into the global DI container.
-  /// 3. Sets up system health and readiness routes.
-  App() {
-    Config.load();
-    di.singleton(_router);
-    di.singleton<ExceptionHandler>(exceptionHandler);
-    di.singleton(_wsHub);
-    di.singleton<Storage>(LocalStorage(
-      root: Config.get('STORAGE_ROOT', 'storage')!,
-      baseUrl: Config.get('STORAGE_URL', '/storage')!,
-    ));
-    
-    // Resolve Queue driver from config
-    final queueDriverName = Config.get('QUEUE_DRIVER', 'memory')!;
-    final QueueDriver driver = _resolveQueueDriver(queueDriverName);
-    di.singleton<Queue>(Queue(driver: driver));
-
-    _setupDefaultRoutes();
-  }
 
   QueueDriver _resolveQueueDriver(String name) {
     switch (name.toLowerCase()) {
@@ -87,13 +88,16 @@ class App {
   }
 
   void _setupDefaultRoutes() {
-    get('/health', (ctx) async => ctx.json({'status': 'ok'}));
-    get('/ready', (ctx) async => ctx.json({
-      'status': _isShuttingDown ? 'down' : 'ok',
-      'active_requests': activeRequests,
-      'http_requests': _activeHttpCounter,
-      'websockets': _activeWSCounter,
-    }));
+    get('/health', (ctx) async => ctx.json(<String, String>{'status': 'ok'}));
+    get(
+      '/ready',
+      (ctx) async => ctx.json({
+        'status': _isShuttingDown ? 'down' : 'ok',
+        'active_requests': activeRequests,
+        'http_requests': _activeHttpCounter,
+        'websockets': _activeWSCounter,
+      }),
+    );
   }
 
   /// Registers a global [middleware] to be executed for every request.
@@ -109,55 +113,99 @@ class App {
   }
 
   /// Groups routes under a common [prefix] with optional [middleware].
-  void group(String prefix, {List<Middleware> middleware = const [], required void Function(Router) callback}) {
+  void group(
+    String prefix, {
+    List<Middleware> middleware = const [],
+    required void Function(Router) callback,
+  }) {
     _ensureNotStarted();
     _router.group(prefix, middleware: middleware, callback: callback);
   }
 
   /// Registers a GET route.
-  RouteData get(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData get(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.add('GET', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers a POST route.
-  RouteData post(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
-     _ensureNotStarted();
-     return _router.add('POST', path, handler, middleware: middleware, name: name);
+  RouteData post(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
+    _ensureNotStarted();
+    return _router.add('POST', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers a PUT route.
-  RouteData put(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData put(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.add('PUT', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers a DELETE route.
-  RouteData delete(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData delete(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.add('DELETE', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers a PATCH route.
-  RouteData patch(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData patch(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.add('PATCH', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers a HEAD route.
-  RouteData head(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData head(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.add('HEAD', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers an OPTIONS route.
-  RouteData options(String path, Handler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData options(
+    String path,
+    Handler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.add('OPTIONS', path, handler, middleware: middleware, name: name);
   }
 
   /// Registers a WebSocket endpoint at the specified [path].
-  RouteData ws(String path, WebSocketHandler handler, {List<Middleware> middleware = const [], String? name}) {
+  RouteData ws(
+    String path,
+    WebSocketHandler handler, {
+    List<Middleware> middleware = const [],
+    String? name,
+  }) {
     _ensureNotStarted();
     return _router.ws(path, handler, middleware: middleware, name: name);
   }
@@ -166,16 +214,16 @@ class App {
   Future<void> listen({int? port, String? host}) async {
     final serverPort = port ?? Config.getInt('PORT', 3000)!;
     final serverHost = host ?? Config.get('HOST', '0.0.0.0')!;
-    
+
     try {
       _server = await HttpServer.bind(serverHost, serverPort, shared: true);
       _isStarted = true;
       Logger.staticInfo('Server started on http://$serverHost:$serverPort');
     } catch (e) {
       if (e is SocketException && (e.osError?.errorCode == 10048 || e.osError?.errorCode == 98)) {
-        Logger.staticError('Port $serverPort is already in use. Please ensure no other instances of the server are running.');
-        // On Windows, errorCode 10048 is "Only one usage of each socket address is normally permitted"
-        // On Linux, errorCode 98 is "Address already in use"
+        Logger.staticError(
+          'Port $serverPort is already in use. Please ensure no other instances of the server are running.',
+        );
       } else {
         Logger.staticError('Failed to start server: $e');
       }
@@ -184,23 +232,25 @@ class App {
 
     _handleGracefulShutdown();
 
-    await for (HttpRequest rawRequest in _server!) {
-      if (_isShuttingDown) {
-        rawRequest.response.statusCode = 503;
-        rawRequest.response.headers.set('content-type', 'application/json');
-        rawRequest.response.write(jsonEncode({'message': 'Server is shutting down'}));
-        await rawRequest.response.close();
-        continue;
+    final srv = _server;
+    if (srv != null) {
+      await for (final rawRequest in srv) {
+        if (_isShuttingDown) {
+          rawRequest.response.statusCode = 503;
+          rawRequest.response.headers.set('content-type', 'application/json');
+          rawRequest.response.write(jsonEncode(<String, String>{'message': 'Server is shutting down'}));
+          await rawRequest.response.close();
+          continue;
+        }
+        unawaited(_handleRequest(rawRequest));
       }
-      _handleRequest(rawRequest);
     }
   }
 
   /// Stops the server and releases all bound resources.
   Future<void> stop({bool force = false}) async {
-  
-     _isShuttingDown = true;
-     await _server?.close(force: force);
+    _isShuttingDown = true;
+    await _server?.close(force: force);
   }
 
   void _handleGracefulShutdown() {
@@ -216,11 +266,11 @@ class App {
     Logger.staticInfo('Shutting down server... Draining $activeRequests total connections.');
 
     // Stop accepting new connections but keep the socket pool alive for now
-    final stopFuture = stop(force: false);
-    
-    int timeoutSeconds = 15;
+    final stopFuture = stop();
+
+    var timeoutSeconds = 15;
     while (activeRequests > 0 && timeoutSeconds > 0) {
-      await Future.delayed(Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
       timeoutSeconds--;
       if (timeoutSeconds % 5 == 0 && timeoutSeconds > 0) {
         Logger.staticInfo('Waiting for $activeRequests connections... ($timeoutSeconds s remaining)');
@@ -243,7 +293,7 @@ class App {
 
   Future<void> _handleRequest(HttpRequest rawRequest) async {
     final isWebSocket = WebSocketTransformer.isUpgradeRequest(rawRequest);
-    
+
     // Strict Concurrency Control (Pre-increment to avoid races)
     if (isWebSocket) {
       _activeWSCounter++;
@@ -261,17 +311,19 @@ class App {
         _activeHttpCounter--;
         rawRequest.response.statusCode = 503;
         rawRequest.response.headers.set('content-type', 'application/json');
-        rawRequest.response.write(jsonEncode({
-          'message': 'Service Unavailable',
-          'error': 'Server is under high load. Please try again later.'
-        }));
+        rawRequest.response.write(
+          jsonEncode({
+            'message': 'Service Unavailable',
+            'error': 'Server is under high load. Please try again later.',
+          }),
+        );
         await rawRequest.response.close();
         return;
       }
     }
-    
+
     Context? ctx;
-    bool isWSUpgradeHandled = false;
+    var isWSUpgradeHandled = false;
 
     try {
       final (routeData, params) = _router.match(isWebSocket ? 'WS' : rawRequest.method, rawRequest.uri);
@@ -280,16 +332,16 @@ class App {
         rawRequest.response.statusCode = 404;
         if (!isWebSocket) {
           rawRequest.response.headers.set('content-type', 'application/json');
-          rawRequest.response.write(jsonEncode({'message': 'Not Found'}));
+          rawRequest.response.write(jsonEncode(<String, String>{'message': 'Not Found'}));
         }
         await rawRequest.response.close();
         return;
       }
 
       // Parse body for non-WS requests
-      Map<String, dynamic> body = {};
-      Map<String, UploadedFile> files = {};
-      
+      var body = <String, dynamic>{};
+      var files = <String, UploadedFile>{};
+
       if (!isWebSocket && (rawRequest.contentLength > 0 || rawRequest.headers.chunkedTransferEncoding)) {
         final (parsedBody, parsedFiles) = await _parseRequestContent(rawRequest);
         body = parsedBody;
@@ -324,21 +376,28 @@ class App {
       }
 
       final response = await _pipeline.exec(ctx, (lvlCtx) async {
-        if (routeData.compiledHandler != null) {
-          return await routeData.compiledHandler!(lvlCtx);
+        final compiled = routeData.compiledHandler;
+        if (compiled != null) {
+          return compiled(lvlCtx);
         }
-        return await routeData.handler!(lvlCtx);
+        final h = routeData.handler;
+        if (h != null) {
+          return h(lvlCtx);
+        }
+        throw StateError('Route has no handler.');
       });
-      
+
       await _sendResponse(rawRequest, ctx, response, logger);
     } catch (e) {
       if (isWebSocket && !isWSUpgradeHandled) {
         // WS upgrade failed before we handed off to _handleWebSocket
-        try { await rawRequest.response.close(); } catch (_) {}
+        try {
+          await rawRequest.response.close();
+        } catch (_) {}
       } else if (!isWebSocket) {
-        final response = ctx != null 
-          ? exceptionHandler.render(ctx, e)
-          : Response.json({'message': 'Bad Request', 'error': e.toString()}, status: 400);
+        final response = ctx != null
+            ? exceptionHandler.render(ctx, e)
+            : Response.json(<String, String>{'message': 'Bad Request', 'error': e.toString()}, status: 400);
 
         try {
           if (ctx != null) {
@@ -347,7 +406,7 @@ class App {
             // Context-less response
             rawRequest.response.statusCode = response.statusCode;
             rawRequest.response.headers.set('content-type', 'application/json');
-            rawRequest.response.write(jsonEncode(response.body ?? {'message': 'Error'}));
+            rawRequest.response.write(jsonEncode(response.body ?? <String, String>{'message': 'Error'}));
             await rawRequest.response.close();
           }
         } catch (_) {}
@@ -370,10 +429,10 @@ class App {
     try {
       final result = await _pipeline.exec(ctx, (lvlCtx) async {
         final routePipeline = Pipeline();
-        for (var m in routeData.middleware) {
+        for (final m in routeData.middleware) {
           routePipeline.use(m);
         }
-        return await routePipeline.exec(lvlCtx, (c) async => Response(statusCode: 101));
+        return routePipeline.exec(lvlCtx, (c) async => Response(statusCode: 101));
       });
 
       if (result.statusCode != 101) {
@@ -384,9 +443,12 @@ class App {
       final socket = await WebSocketTransformer.upgrade(ctx.request.rawRequest);
       final connection = WebSocketConnection(socket, ctx);
       _wsHub.register(connection);
-      
-      await routeData.wsHandler!(connection);
-      
+
+      final wsh = routeData.wsHandler;
+      if (wsh != null) {
+        await wsh(connection);
+      }
+
       // Wait for the socket to truly close
       await socket.done;
     } catch (e) {
@@ -409,7 +471,7 @@ class App {
     if (mimeType == 'application/json') {
       final content = await _readStringWithLimit(request);
       if (content.isNotEmpty) {
-        body.addAll(jsonDecode(content));
+        body.addAll(jsonDecode(content) as Map<String, dynamic>);
       }
     } else if (mimeType == 'application/x-www-form-urlencoded') {
       final content = await _readStringWithLimit(request);
@@ -421,11 +483,11 @@ class App {
       if (boundary != null) {
         final transformer = MimeMultipartTransformer(boundary);
         final parts = transformer.bind(request);
-        
-        final maxPartSize = Config.getInt('MAX_UPLOAD_SIZE_PER_PART', 10 * 1024 * 1024)!; 
+
+        final maxPartSize = Config.getInt('MAX_UPLOAD_SIZE_PER_PART', 10 * 1024 * 1024)!;
         final maxTotalSize = Config.getInt('MAX_TOTAL_UPLOAD_SIZE', 50 * 1024 * 1024)!;
 
-        int totalBytesAcrossParts = 0;
+        var totalBytesAcrossParts = 0;
 
         await for (final part in parts) {
           final header = part.headers['content-disposition'];
@@ -438,18 +500,19 @@ class App {
           if (filename != null && name != null) {
             // Create a temp directory that will be deleted along with the file
             final tempDir = Directory.systemTemp.createTempSync('kronix_');
-            final safeFilename = 'up_${DateTime.now().millisecondsSinceEpoch}_${name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')}';
+            final safeFilename =
+                'up_${DateTime.now().millisecondsSinceEpoch}_${name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')}';
             final tempPath = '${tempDir.path}${Platform.pathSeparator}$safeFilename';
-            
+
             final file = File(tempPath);
             final sink = file.openWrite();
-            int currentPartBytes = 0;
-            
+            var currentPartBytes = 0;
+
             try {
               await for (final chunk in part) {
                 currentPartBytes += chunk.length;
                 totalBytesAcrossParts += chunk.length;
-                
+
                 if (currentPartBytes > maxPartSize) {
                   throw Exception('File "$filename" exceeds part limit of $maxPartSize bytes');
                 }
@@ -479,18 +542,18 @@ class App {
         }
       }
     } else {
-       // Default to raw content if unknown
-       final content = await _readStringWithLimit(request);
-       body['_raw'] = content;
+      // Default to raw content if unknown
+      final content = await _readStringWithLimit(request);
+      body['_raw'] = content;
     }
 
     return (body, files);
   }
 
   Future<String> _readStringWithLimit(HttpRequest request) async {
-    final maxBodySize = Config.getInt('MAX_BODY_SIZE', 10 * 1024 * 1024)!; 
+    final maxBodySize = Config.getInt('MAX_BODY_SIZE', 10 * 1024 * 1024)!;
     final bytes = <int>[];
-    int totalBytes = 0;
+    var totalBytes = 0;
 
     await for (final chunk in request) {
       totalBytes += chunk.length;
@@ -499,17 +562,22 @@ class App {
       }
       bytes.addAll(chunk);
     }
-    
+
     return utf8.decode(bytes);
   }
 
-  Future<void> _sendResponse(HttpRequest rawRequest, Context ctx, Response response, Logger logger) async {
+  Future<void> _sendResponse(
+    HttpRequest rawRequest,
+    Context ctx,
+    Response response,
+    Logger logger,
+  ) async {
     final duration = ctx.elapsed;
-    
+
     try {
       final res = rawRequest.response;
       res.statusCode = response.statusCode;
-      
+
       // Apply response headers
       for (final entry in response.headers.entries) {
         final k = entry.key.toLowerCase();
@@ -534,20 +602,23 @@ class App {
       for (final cookie in response.cookies) {
         res.headers.add(HttpHeaders.setCookieHeader, cookie);
       }
-      
+
       // Write body with type detection
-      if (response.body != null) {
-        if (response.body is List<int>) {
-          res.add(response.body as List<int>);
-        } else if (response.body is Stream<List<int>>) {
-          await res.addStream(response.body as Stream<List<int>>);
+      final bodyVal = response.body;
+      if (bodyVal != null) {
+        if (bodyVal is List<int>) {
+          res.add(bodyVal);
+        } else if (bodyVal is Stream<List<int>>) {
+          await res.addStream(bodyVal);
         } else {
-          res.add(utf8.encode(response.body.toString()));
+          res.add(utf8.encode(bodyVal.toString()));
         }
       }
       await res.close();
-      
-      logger.info('${rawRequest.method} ${rawRequest.uri.path} - ${response.statusCode} (${duration.inMilliseconds}ms)');
+
+      logger.info(
+        '${rawRequest.method} ${rawRequest.uri.path} - ${response.statusCode} (${duration.inMilliseconds}ms)',
+      );
     } catch (e) {
       logger.error('Error writing response to socket: $e', error: e);
       rethrow;

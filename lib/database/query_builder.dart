@@ -22,6 +22,9 @@ String _quoteIdentifier(String identifier) {
 /// Each terminal operation (get, first, insert, etc.) creates a snapshot of the
 /// current state before executing, so the builder can be safely reused.
 class QueryBuilder {
+  /// Creates a new [QueryBuilder] for the given [table] name.
+  QueryBuilder(this._table, this._executor);
+
   final String _table;
   final DatabaseExecutor _executor;
   
@@ -36,9 +39,6 @@ class QueryBuilder {
   String? _having;
   int? _limit;
   int? _offset;
-
-  /// Creates a new [QueryBuilder] for the given [table] name.
-  QueryBuilder(this._table, this._executor);
 
   /// Specifies the [columns] to be selected. Defaults to `['*']`.
   QueryBuilder select(List<String> columns) {

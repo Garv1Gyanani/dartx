@@ -1,16 +1,18 @@
-import 'server.dart';
 import 'router.dart';
+import 'server.dart';
 
 /// A utility to generate a document representation of all registered routes.
 class RouteExplorer {
-  final App app;
-
+  /// Creates a new [RouteExplorer] for the given [app].
   RouteExplorer(this.app);
+
+  /// The application instance to explore.
+  final App app;
 
   /// Generates a List of Maps containing route details.
   List<Map<String, dynamic>> explore() {
     return app.router.allRoutes.map((route) {
-      return {
+      return <String, dynamic>{
         'method': route.method,
         'path': route.path,
         'name': route.name,
@@ -25,7 +27,7 @@ class RouteExplorer {
   /// Returns a [Handler] that renders the route information as JSON.
   Handler jsonHandler() {
     return (ctx) async {
-      return ctx.json({
+      return ctx.json(<String, dynamic>{
         'framework': 'Kronix',
         'routes': explore(),
       });

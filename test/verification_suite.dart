@@ -1,11 +1,10 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:kronix/kronix.dart';
 
 void main() async {
-  print('========================================');
-  print('   kronix CRITICAL BUG VERIFICATION');
-  print('========================================\n');
+  stdout.writeln('========================================');
+  stdout.writeln('   KRONIX CRITICAL BUG VERIFICATION');
+  stdout.writeln('========================================\n');
 
   await testConfigBug();
   await testResponseHeadersBug();
@@ -13,48 +12,52 @@ void main() async {
   await testJwtAuthBug();
   await testMigrationBatchBug();
   
-  print('\nVerification Complete.');
+  stdout.writeln('\nVerification Complete.');
   exit(0);
 }
 
+/// Tests that Config.set() and Config.get() are consistent.
 Future<void> testConfigBug() async {
-  print('--- Testing Config Bug (set/get disconnect) ---');
+  stdout.writeln('--- Testing Config Bug (set/get disconnect) ---');
   Config.set('VERIFY_KEY', 'verified_value');
   final value = Config.get('VERIFY_KEY');
   if (value == 'verified_value') {
-    print('✅ Config set/get works correctly.');
+    stdout.writeln('✅ Config set/get works correctly.');
   } else {
-    print('❌ BUG CONFIRMED: Config.get() returned "$value" after Config.set() was used.');
+    stdout.writeln('❌ BUG CONFIRMED: Config.get() returned "$value" after Config.set() was used.');
   }
 }
 
+/// Tests that Response headers are mutable.
 Future<void> testResponseHeadersBug() async {
-  print('\n--- Testing Response Headers Bug (const map) ---');
-  final res = Response(); // Default constructor uses const headers
+  stdout.writeln('\n--- Testing Response Headers Bug (const map) ---');
+  final res = Response(); // Default constructor should use mutable headers
   try {
     res.headers['X-Test'] = 'Value';
-    print('✅ Response headers are mutable.');
+    stdout.writeln('✅ Response headers are mutable.');
   } catch (e) {
-    print('❌ BUG CONFIRMED: Response headers are immutable (const). Error: $e');
+    stdout.writeln('❌ BUG CONFIRMED: Response headers are immutable (const). Error: $e');
   }
 }
 
+/// Tests that the CORS plugin handles default responses.
 Future<void> testCorsBug() async {
-  print('\n--- Testing CORS Plugin Bug ---');
+  stdout.writeln('\n--- Testing CORS Plugin Bug ---');
   final cors = Cors();
   final ctx = Context(Request(rawRequest: MockHttpRequest('GET', '/')), container: Container());
   
   try {
     // This simulates the middleware chain where next() returns a default Response
     await cors.handle()(ctx, () async => Response()); 
-    print('✅ CORS handled default response successfully.');
+    stdout.writeln('✅ CORS handled default response successfully.');
   } catch (e) {
-    print('❌ BUG CONFIRMED: CORS crashed on default response. Error: $e');
+    stdout.writeln('❌ BUG CONFIRMED: CORS crashed on default response. Error: $e');
   }
 }
 
+/// Tests that JWT auth doesn't crash on empty bodies (GET requests).
 Future<void> testJwtAuthBug() async {
-  print('\n--- Testing JWT Auth Bug (Body mutation) ---');
+  stdout.writeln('\n--- Testing JWT Auth Bug (Body mutation) ---');
   final auth = Auth('secret');
   
   // 1. Test GET request (usually has empty body map)
@@ -63,77 +66,95 @@ Future<void> testJwtAuthBug() async {
   
   try {
     // Manually set auth header for test
-    rawReq.headers.add('Authorization', 'Bearer ${auth.generateToken({'uid': 1})}');
+    rawReq.headers.add('Authorization', 'Bearer ${auth.generateToken(<String, int>{'uid': 1})}');
     
     await auth.verify()(ctx, () async => Response.ok('ok'));
-    print('✅ JWT verified successfully even with empty body.');
+    stdout.writeln('✅ JWT verified successfully even with empty body.');
   } catch (e) {
-    print('❌ BUG CONFIRMED: JWT verification crashed on empty body mutation. Error: $e');
+    stdout.writeln('❌ BUG CONFIRMED: JWT verification crashed on empty body mutation. Error: $e');
   }
 }
 
+/// Tests the migration runner's batch increment logic.
 Future<void> testMigrationBatchBug() async {
-  print('\n--- Testing Migration Batch Bug ---');
-  final db = MockDB();
-  final runner = MigrationRunner(db, [
-    MigrationEntry('m1', MockMigration()),
-    MigrationEntry('m2', MockMigration()),
+  stdout.writeln('\n--- Testing Migration Batch Bug ---');
+  final db = VerificationMockDB();
+  final runner = MigrationRunner(db, <MigrationEntry>[
+    MigrationEntry('m1', VerificationMockMigration()),
+    MigrationEntry('m2', VerificationMockMigration()),
   ]);
 
   await runner.run();
   
-  // Check the recorded batches in history
-  final batches = db.history
-    .where((sql) => sql.contains('INSERT INTO migrations'))
-    .map((sql) {
-      final match = RegExp(r"batch\) VALUES \(@name, (\d+)\)").firstMatch(sql);
-      // Wait, the SQL uses @batch, not literal. Let's look at params if we had them.
-      // But based on the code analysis: batch = (max_batch ?? 0) + 1;
-      // If run() calls _recordMigration in a loop, it queries max_batch EACH time.
-      return sql;
-    })
-    .toList();
-
-  print('ℹ️ Migration Runner behavior: It records each migration with a new batch ID if called sequentially.');
-  print('ℹ️ (Verification relies on code analysis: _recordMigration is called inside loop, each calling _db.query(SELECT MAX(batch)))');
+  stdout.writeln('ℹ️ Migration Runner behavior: It records each migration with a new batch ID if called sequentially.');
+  stdout.writeln('ℹ️ (Verification relies on code analysis: _recordMigration is called inside loop, each calling _db.query(SELECT MAX(batch)))');
 }
 
 // ─── MOCKS ───────────────────────────────────────────────────────
 
+/// Mock [HttpRequest] for bug verification.
 class MockHttpRequest implements HttpRequest {
-  @override final String method;
-  @override final Uri uri;
-  @override final HttpHeaders headers = MockHttpHeaders();
-  
+  /// Creates a new [MockHttpRequest].
   MockHttpRequest(this.method, String path) : uri = Uri.parse(path);
 
-  // Unimplemented stuff needed for the interface
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  @override
+  final String method;
+
+  @override
+  final Uri uri;
+
+  @override
+  final HttpHeaders headers = MockHttpHeaders();
+  
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpHeaders] for bug verification.
 class MockHttpHeaders implements HttpHeaders {
-  final Map<String, List<String>> _data = {};
-  @override void add(String name, Object value, {bool preserveHeaderCase = false}) => _data[name] = [value.toString()];
-  @override String? value(String name) => _data[name]?.first;
-  // ... more unimplemented
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  /// Creates a new [MockHttpHeaders].
+  MockHttpHeaders();
+
+  final Map<String, List<String>> _data = <String, List<String>>{};
+
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) =>
+      _data[name] = <String>[value.toString()];
+
+  @override
+  String? value(String name) => _data[name]?.first;
+
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) =>
+      _data[name] = <String>[value.toString()];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class MockDB extends DatabaseAdapter {
-  final List<String> history = [];
+/// Mock database for verification.
+class VerificationMockDB extends DatabaseAdapter {
+  /// History of SQL queries executed.
+  final List<String> history = <String>[];
   
   @override
   Future<QueryResult> query(String sql, [Map<String, dynamic>? params]) async {
     history.add(sql);
-    if (sql.contains('SELECT MAX(batch)')) return MockQueryResult([{'max_batch': 0}]);
-    if (sql.contains('SELECT name FROM migrations')) return MockQueryResult([]);
-    if (sql.contains('pg_try_advisory_lock')) return MockQueryResult([{'acquired': true}]);
-    return MockQueryResult([]);
+    if (sql.contains('SELECT MAX(batch)')) {
+      return VerificationMockQueryResult(<Map<String, int>>[<String, int>{'max_batch': 0}]);
+    }
+    if (sql.contains('SELECT name FROM migrations')) {
+      return VerificationMockQueryResult(<Map<String, dynamic>>[]);
+    }
+    if (sql.contains('pg_try_advisory_lock')) {
+      return VerificationMockQueryResult(<Map<String, bool>>[<String, bool>{'acquired': true}]);
+    }
+    return VerificationMockQueryResult(<Map<String, dynamic>>[]);
   }
 
   @override
   Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback) async {
-    return await callback(this);
+    return callback(this);
   }
 
   @override
@@ -151,13 +172,26 @@ class MockDB extends DatabaseAdapter {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class MockQueryResult implements QueryResult {
-  @override final List<Map<String, dynamic>> rows;
-  @override final int? affectedRows = 0;
-  MockQueryResult(this.rows);
+/// Result of a verification mock query.
+class VerificationMockQueryResult implements QueryResult {
+  /// Creates a new [VerificationMockQueryResult].
+  VerificationMockQueryResult(this.rows);
+
+  @override
+  final List<Map<String, dynamic>> rows;
+
+  @override
+  final int? affectedRows = 0;
 }
 
-class MockMigration extends Migration {
-  @override Future<void> up(DatabaseExecutor db) async {}
-  @override Future<void> down(DatabaseExecutor db) async {}
+/// Mock migration for verification.
+class VerificationMockMigration extends Migration {
+  /// Creates a new [VerificationMockMigration].
+  VerificationMockMigration();
+
+  @override
+  Future<void> up(DatabaseExecutor db) async {}
+
+  @override
+  Future<void> down(DatabaseExecutor db) async {}
 }

@@ -9,6 +9,9 @@ import 'context.dart';
 /// individual real-time connections, allowing for automatic JSON encoding,
 /// room management, and access to the original request [Context].
 class WebSocketConnection {
+  /// Creates a new connection wrapper for the given [socket] and [context].
+  WebSocketConnection(this.socket, this.context);
+
   /// The underlying native Dart [WebSocket] instance.
   final WebSocket socket;
   
@@ -16,9 +19,6 @@ class WebSocketConnection {
   final Context context;
   
   final Set<String> _rooms = {};
-
-  /// Creates a new connection wrapper for the given [socket] and [context].
-  WebSocketConnection(this.socket, this.context);
 
   /// A unique identifier for this connection, identical to the initial [Context.requestId].
   String get id => context.requestId;
@@ -62,14 +62,15 @@ class WebSocketConnection {
 /// Use the [WebSocketHub] to broadcast messages to all users, specific rooms,
 /// or individual clients.
 class WebSocketHub {
+  /// Internal constructor for [WebSocketHub].
+  WebSocketHub();
+
   final Map<String, WebSocketConnection> _connections = {};
 
   /// Returns an iterable of all currently active [WebSocketConnection]s.
   Iterable<WebSocketConnection> get connections => _connections.values;
 
   /// Registers a new [connection] into the hub.
-  /// 
-  /// This is handled automatically by the [App] during the WebSocket upgrade process.
   void register(WebSocketConnection connection) {
     _connections[connection.id] = connection;
     connection.socket.done.then((_) => _connections.remove(connection.id));
@@ -79,14 +80,14 @@ class WebSocketHub {
   /// 
   /// Maps and Lists are automatically JSON encoded.
   void broadcast(dynamic message) {
-    for (var conn in _connections.values) {
+    for (final conn in _connections.values) {
       conn.send(message);
     }
   }
 
   /// Broadcasts a [message] to all connections currently in the specified [room].
   void toRoom(String room, dynamic message) {
-    for (var conn in _connections.values) {
+    for (final conn in _connections.values) {
       if (conn.isInRoom(room)) {
         conn.send(message);
       }

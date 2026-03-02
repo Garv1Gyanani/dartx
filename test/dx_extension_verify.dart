@@ -2,36 +2,38 @@ import 'dart:io';
 import 'package:kronix/kronix.dart';
 
 void main() async {
-  print('========================================');
-  print('   Kronix DX & EXTENSION VERIFICATION');
-  print('========================================\n');
+  stdout.writeln('========================================');
+  stdout.writeln('   KRONIX DX & EXTENSION VERIFICATION');
+  stdout.writeln('========================================\n');
 
   testEnvAlias();
   testCastingHelpers();
   await testMiddlewareHelper();
   testFileServeArchitecture();
 
-  print('\nVerification Complete.');
+  stdout.writeln('\nVerification Complete.');
   exit(0);
 }
 
+/// Tests that Env.get() is an alias for Config.get().
 void testEnvAlias() {
-  print('--- Testing Env Alias ---');
+  stdout.writeln('--- Testing Env Alias ---');
   Config.set('VERIFY_ENV', 'true');
   if (Env.get('VERIFY_ENV') == 'true') {
-    print('✅ Env alias for Config works.');
+    stdout.writeln('✅ Env alias for Config works.');
   } else {
-    print('❌ BUG: Env.get() failed to retrieve Config value.');
+    stdout.writeln('❌ BUG: Env.get() failed to retrieve Config value.');
   }
 }
 
+/// Tests parameter casting helpers in Context.
 void testCastingHelpers() {
-  print('\n--- Testing Casting Helpers ---');
+  stdout.writeln('\n--- Testing Casting Helpers ---');
   final rawReq = MockHttpRequest('GET', '/test?id=42&active=true&price=19.99');
   final req = Request(
     rawRequest: rawReq,
-    params: {'userId': '101'},
-    query: {'id': '42', 'active': 'true', 'price': '19.99'}
+    params: <String, String>{'userId': '101'},
+    query: <String, String>{'id': '42', 'active': 'true', 'price': '19.99'},
   );
   
   final ctx = Context(req, container: Container());
@@ -40,19 +42,20 @@ void testCastingHelpers() {
       ctx.queryInt('id') == 42 && 
       ctx.queryBool('active') == true &&
       ctx.queryDouble('price') == 19.99) {
-    print('✅ All casting helpers (paramInt, queryInt, queryBool, queryDouble) verified.');
+    stdout.writeln('✅ All casting helpers (paramInt, queryInt, queryBool, queryDouble) verified.');
   } else {
-    print('❌ BUG: Casting helpers failed. Params: ${ctx.params}, Query: ${ctx.queryParams}');
-    print('Detailed failures:');
-    print('userId: ${ctx.paramInt('userId')} (expected 101)');
-    print('id: ${ctx.queryInt('id')} (expected 42)');
-    print('active: ${ctx.queryBool('active')} (expected true)');
-    print('price: ${ctx.queryDouble('price')} (expected 19.99)');
+    stdout.writeln('❌ BUG: Casting helpers failed. Params: ${ctx.params}, Query: ${ctx.queryParams}');
+    stdout.writeln('Detailed failures:');
+    stdout.writeln('userId: ${ctx.paramInt('userId')} (expected 101)');
+    stdout.writeln('id: ${ctx.queryInt('id')} (expected 42)');
+    stdout.writeln('active: ${ctx.queryBool('active')} (expected true)');
+    stdout.writeln('price: ${ctx.queryDouble('price')} (expected 19.99)');
   }
 }
 
+/// Tests MiddlewareHelper's only/except logic.
 Future<void> testMiddlewareHelper() async {
-  print('\n--- Testing Middleware Helper (only/except) ---');
+  stdout.writeln('\n--- Testing Middleware Helper (only/except) ---');
   
   final middleware = (Context ctx, Next next) async => Response.ok('intercepted');
   
@@ -66,9 +69,9 @@ Future<void> testMiddlewareHelper() async {
   final res2 = await onlyAdmin(missCtx, () async => Response.ok('ok'));
 
   if (res1.body == 'intercepted' && res2.body == 'ok') {
-    print('✅ MiddlewareHelper.only() verified.');
+    stdout.writeln('✅ MiddlewareHelper.only() verified.');
   } else {
-    print('❌ BUG: MiddlewareHelper.only() failed.');
+    stdout.writeln('❌ BUG: MiddlewareHelper.only() failed.');
   }
 
   // Test except()
@@ -80,14 +83,15 @@ Future<void> testMiddlewareHelper() async {
   final res4 = await exceptApi(webCtx, () async => Response.ok('ok'));
 
   if (res3.body == 'ok' && res4.body == 'intercepted') {
-    print('✅ MiddlewareHelper.except() verified.');
+    stdout.writeln('✅ MiddlewareHelper.except() verified.');
   } else {
-    print('❌ BUG: MiddlewareHelper.except() failed.');
+    stdout.writeln('❌ BUG: MiddlewareHelper.except() failed.');
   }
 }
 
+/// Tests the file serving logic in Context.
 void testFileServeArchitecture() {
-  print('\n--- Testing File Serving Architecture ---');
+  stdout.writeln('\n--- Testing File Serving Architecture ---');
   final ctx = Context(Request(rawRequest: MockHttpRequest('GET', '/')), container: Container());
   
   // Create a dummy file for the test
@@ -97,16 +101,16 @@ void testFileServeArchitecture() {
   try {
     final res = ctx.file('dummy_test_file.txt');
     if (res.statusCode == 200 && res.headers['content-type']!.startsWith('text/plain')) {
-      print('✅ Context.file() generated correct response structure.');
+      stdout.writeln('✅ Context.file() generated correct response structure.');
     } else {
-      print('❌ BUG: Context.file() failed. Status: ${res.statusCode}, CT: ${res.headers['content-type']}');
+      stdout.writeln('❌ BUG: Context.file() failed. Status: ${res.statusCode}, CT: ${res.headers['content-type']}');
     }
 
     final downloadRes = ctx.download('dummy_test_file.txt', 'my_report.txt');
     if (downloadRes.headers['content-disposition'] == 'attachment; filename="my_report.txt"') {
-      print('✅ Context.download() generated correct headers.');
+      stdout.writeln('✅ Context.download() generated correct headers.');
     } else {
-      print('❌ BUG: Context.download() failed headers check.');
+      stdout.writeln('❌ BUG: Context.download() failed headers check.');
     }
   } finally {
     if (dummyFile.existsSync()) dummyFile.deleteSync();
@@ -115,24 +119,54 @@ void testFileServeArchitecture() {
 
 // ─── MOCKS ───────────────────────────────────────────────────────
 
+/// Mock [HttpRequest] for extension verification.
 class MockHttpRequest implements HttpRequest {
-  @override final String method;
-  @override final Uri uri;
-  @override final HttpHeaders headers = MockHttpHeaders();
-  @override final HttpResponse response = MockHttpResponse();
-  
+  /// Creates a new [MockHttpRequest].
   MockHttpRequest(this.method, String path) : uri = Uri.parse(path);
 
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  @override
+  final String method;
+
+  @override
+  final Uri uri;
+
+  @override
+  final HttpHeaders headers = MockHttpHeaders();
+
+  @override
+  final HttpResponse response = MockHttpResponse();
+  
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpHeaders] for extension verification.
 class MockHttpHeaders implements HttpHeaders {
-  final Map<String, List<String>> _data = {};
-  @override void add(String name, Object value, {bool preserveHeaderCase = false}) => _data[name] = [value.toString()];
-  @override String? value(String name) => _data[name]?.first;
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  /// Creates a new [MockHttpHeaders].
+  MockHttpHeaders();
+
+  final Map<String, List<String>> _data = <String, List<String>>{};
+
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) =>
+      _data[name] = <String>[value.toString()];
+
+  @override
+  String? value(String name) => _data[name]?.first;
+
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) =>
+      _data[name] = <String>[value.toString()];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpResponse] for extension verification.
 class MockHttpResponse implements HttpResponse {
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  /// Creates a new [MockHttpResponse].
+  MockHttpResponse();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

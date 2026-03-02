@@ -12,6 +12,9 @@
 /// print(metrics.snapshot);
 /// ```
 class QueueMetrics {
+  /// Creates a new [QueueMetrics] instance.
+  QueueMetrics();
+
   int _dispatched = 0;
   int _processed = 0;
   int _succeeded = 0;
@@ -44,6 +47,9 @@ class QueueMetrics {
   /// Records a permanent failure (dead letter).
   void recordPermanentFailure() => _failed++;
 
+  /// Records a job being retried.
+  void recordProcessingRetry() => _retried++;
+
   /// Records a job that was killed due to timeout.
   void recordTimeout() => _timedOut++;
 
@@ -63,8 +69,9 @@ class QueueMetrics {
 
   /// Throughput: jobs completed per second since start.
   double get throughput {
-    if (_startedAt == null || _succeeded == 0) return 0;
-    final elapsed = DateTime.now().difference(_startedAt!).inSeconds;
+    final startVal = _startedAt;
+    if (startVal == null || _succeeded == 0) return 0;
+    final elapsed = DateTime.now().difference(startVal).inSeconds;
     return elapsed > 0 ? _succeeded / elapsed : 0;
   }
 
@@ -87,19 +94,22 @@ class QueueMetrics {
   }
 
   /// Returns a point-in-time snapshot of all metrics.
-  Map<String, dynamic> get snapshot => {
-        'dispatched': _dispatched,
-        'processed': _processed,
-        'succeeded': _succeeded,
-        'failed': _failed,
-        'retried': _retried,
-        'timedOut': _timedOut,
-        'averageProcessingTimeMs': averageProcessingTimeMs.round(),
-        'p95ProcessingTimeMs': p95ProcessingTimeMs.round(),
-        'throughputPerSecond': double.parse(throughput.toStringAsFixed(2)),
-        'failureRatePercent': double.parse(failureRate.toStringAsFixed(2)),
-        'uptime': _startedAt != null
-            ? DateTime.now().difference(_startedAt!).toString()
-            : null,
-      };
+  Map<String, dynamic> get snapshot {
+    final startVal = _startedAt;
+    return {
+      'dispatched': _dispatched,
+      'processed': _processed,
+      'succeeded': _succeeded,
+      'failed': _failed,
+      'retried': _retried,
+      'timedOut': _timedOut,
+      'averageProcessingTimeMs': averageProcessingTimeMs.round(),
+      'p95ProcessingTimeMs': p95ProcessingTimeMs.round(),
+      'throughputPerSecond': double.parse(throughput.toStringAsFixed(2)),
+      'failureRatePercent': double.parse(failureRate.toStringAsFixed(2)),
+      'uptime': startVal != null
+          ? DateTime.now().difference(startVal).toString()
+          : null,
+    };
+  }
 }

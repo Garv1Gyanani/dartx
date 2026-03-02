@@ -4,11 +4,11 @@ import '../http/response.dart';
 
 /// Middleware for enforcing a maximum size on incoming request bodies.
 class RequestSizeLimit {
-  /// The maximum allowed size in bytes.
-  final int maxBytes;
-
   /// Creates a new [RequestSizeLimit] with the specified [maxBytes].
   RequestSizeLimit(this.maxBytes);
+
+  /// The maximum allowed size in bytes.
+  final int maxBytes;
 
   /// Returns a [Middleware] that rejects requests exceeding the size limit.
   Middleware handle() {
@@ -19,7 +19,7 @@ class RequestSizeLimit {
         return Response(statusCode: 413, body: 'Request Entity Too Large');
       }
       
-      return await next();
+      return next();
     };
   }
 }

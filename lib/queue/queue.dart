@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'job.dart';
-import 'driver.dart';
-import 'worker.dart';
-import 'metrics.dart';
-import '../di/container.dart';
 import '../core/logger.dart';
+import '../di/container.dart';
+import 'driver.dart';
+import 'job.dart';
+import 'metrics.dart';
+import 'worker.dart';
 
 /// High-level facade for the queue system.
 ///
@@ -17,6 +17,10 @@ import '../core/logger.dart';
 /// queue.work(concurrency: 4, maxJobsPerSecond: 10);
 /// ```
 class Queue {
+  /// Creates a new [Queue] instance with the given [driver].
+  Queue({required this.driver});
+
+  /// The storage backend for the queue.
   final QueueDriver driver;
 
   /// Metrics collector tracking throughput, failures, and processing times.
@@ -26,8 +30,6 @@ class Queue {
 
   /// Returns `true` if a worker is currently running.
   bool get isProcessing => _worker?.isRunning ?? false;
-
-  Queue({required this.driver});
 
   // ---------------------------------------------------------------------------
   // Dispatch API
@@ -46,7 +48,9 @@ class Queue {
     job.availableAt = DateTime.now().add(delay);
     await driver.push(job, job.queue);
     metrics.recordDispatch();
-    Logger.staticInfo('📤 Dispatched [${job.name}] to queue "${job.queue}" (available in ${delay.inSeconds}s)');
+    Logger.staticInfo(
+      '📤 Dispatched [${job.name}] to queue "${job.queue}" (available in ${delay.inSeconds}s)',
+    );
     return job.id;
   }
 
@@ -59,11 +63,12 @@ class Queue {
     job.attempts++;
     job.status = JobStatus.processing;
     try {
-      if (job.timeout != null) {
+      final timeoutVal = job.timeout;
+      if (timeoutVal != null) {
         await job.handle().timeout(
-          job.timeout!,
+          timeoutVal,
           onTimeout: () {
-            throw JobTimeoutException(job.id, job.name, job.timeout!);
+            throw JobTimeoutException(job.id, job.name, timeoutVal);
           },
         );
       } else {
@@ -118,7 +123,8 @@ class Queue {
       ..onTimeout = onTimeout;
 
     // Start in the background — don't await the future (it completes on stop)
-    unawaited(_worker!.start());
+    // ignore: unawaited_future
+    _worker?.start();
   }
 
   /// Stops the background worker gracefully.
@@ -171,10 +177,6 @@ class Queue {
     await driver.clear(queue);
   }
 }
-
-// ---------------------------------------------------------------------------
-// DI Convenience
-// ---------------------------------------------------------------------------
 
 /// Extension on [Container] for queue convenience.
 extension QueueContainerExtensions on Container {

@@ -34,17 +34,13 @@ void main() async {
 
     // Validation Example
     router.add('POST', '/register', (ctx) async {
-      final errors = ctx.validate({
+      final data = await ctx.validateData({
         'email': 'required|email',
         'password': 'required|min:8',
         'age': 'numeric|min:18'
       });
 
-      if (errors.isNotEmpty) {
-        return ctx.json({'errors': errors}, status: 422);
-      }
-
-      return ctx.json({'message': 'User registered successfully'});
+      return ctx.json({'message': 'User registered successfully', 'email': data['email']});
     });
   });
 

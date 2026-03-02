@@ -6,9 +6,12 @@ import 'memory_driver.dart';
 /// 
 /// ```dart
 /// await Cache.put('key', 'value', ttl: Duration(minutes: 5));
-/// final val = await Cache.get('key');
+/// final val = await Cache.get<String>('key');
 /// ```
 class Cache {
+  /// Internal constructor for [Cache].
+  Cache();
+
   static CacheDriver _driver = MemoryCacheDriver();
 
   /// Sets the global cache driver.
@@ -40,12 +43,12 @@ class Cache {
 
   /// Increments the value of an item.
   static Future<int> increment(String key, [int value = 1]) async {
-    return await _driver.increment(key, value);
+    return _driver.increment(key, value);
   }
 
   /// Decrements the value of an item.
   static Future<int> decrement(String key, [int value = 1]) async {
-    return await _driver.decrement(key, value);
+    return _driver.decrement(key, value);
   }
 
   /// Removes an item.
@@ -60,6 +63,6 @@ class Cache {
 
   /// Checks if an item exists.
   static Future<bool> has(String key) async {
-    return await _driver.has(key);
+    return _driver.has(key);
   }
 }

@@ -1,4 +1,4 @@
-![Kronix Splash](assets/splash.png)
+![Kronix Banner](assets/banner.png)
 
 # Kronix
 ### A fast and flexible web framework for Dart.

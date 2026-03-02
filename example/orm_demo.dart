@@ -3,7 +3,7 @@ import 'package:kronix/kronix.dart';
 // Mocking the behavior for demo since we don't have a real Postgres running
 class MockDatabaseAdapter implements DatabaseAdapter {
   @override
-  QueryBuilder table(String name) => QueryBuilder(name, this);
+  QueryBuilder table(String name, [DatabaseExecutor? executor]) => QueryBuilder(name, executor ?? this);
 
   @override
   Future<QueryResult> query(String sql, [Map<String, dynamic>? params]) async {
@@ -21,8 +21,6 @@ class MockDatabaseAdapter implements DatabaseAdapter {
     return result;
   }
 
-  @override
-  Future<DatabaseExecutor> beginTransaction() => throw UnimplementedError();
   @override
   Future<void> connect() async {}
   @override
@@ -44,9 +42,7 @@ class MockDatabaseExecutor implements DatabaseExecutor {
     return MockQueryResult([]);
   }
   @override
-  Future<void> commit() async {}
-  @override
-  Future<void> rollback() async {}
+  Future<T> transaction<T>(Future<T> Function(DatabaseExecutor tx) callback) async => await callback(this);
 }
 
 void main() async {

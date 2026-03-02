@@ -39,18 +39,15 @@ void main() async {
       return ctx.json({'user_id': id, 'status': 'active'});
     });
 
-    // POST request with declarative validation
-    router.add('POST', '/login', (ctx) async {
-      final errors = ctx.validate({
-        'username': 'required|min:3',
-        'password': 'required|min:6',
+    // Validation Example
+    router.add('POST', '/register', (ctx) async {
+      final data = await ctx.validateData({
+        'email': 'required|email',
+        'password': 'required|min:8',
+        'age': 'numeric|min:18'
       });
 
-      if (errors.isNotEmpty) {
-        return ctx.json({'errors': errors}, status: 422);
-      }
-
-      return ctx.json({'token': 'jwt_token_stub'});
+      return ctx.json({'message': 'User registered successfully', 'email': data['email']});
     });
   });
 

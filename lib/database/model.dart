@@ -28,6 +28,9 @@ import 'query_builder.dart';
 /// }
 /// ```
 abstract class Model {
+  /// Creates a new [Model] instance.
+  Model({this.id, this.createdAt, this.updatedAt});
+
   /// The primary key value. Null for unsaved models.
   int? id;
 
@@ -52,8 +55,6 @@ abstract class Model {
   /// Holds the raw database attributes for this model.
   Map<String, dynamic>? _rawAttributes;
 
-  Model({this.id, this.createdAt, this.updatedAt});
-
   /// Sets the database executor and raw attributes for this model instance.
   void setRawData(DatabaseExecutor executor, Map<String, dynamic> raw) {
     _executor = executor;
@@ -62,11 +63,12 @@ abstract class Model {
 
   /// Returns the database executor, throwing an error if not set.
   DatabaseExecutor get db {
-    if (_executor == null) {
+    final executor = _executor;
+    if (executor == null) {
       throw StateError('This model instance is not attached to a database executor. '
           'Relationships can only be loaded on models fetched via ModelQuery.');
     }
-    return _executor!;
+    return executor;
   }
 
   /// Retrieves a raw attribute value by [key].
@@ -156,7 +158,7 @@ abstract class Model {
   bool get exists => id != null;
 
   @override
-  String toString() => '${runtimeType}(id: $id)';
+  String toString() => '$runtimeType(id: $id)';
 
   @override
   bool operator ==(Object other) =>

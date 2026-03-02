@@ -6,6 +6,19 @@ import 'file.dart';
 /// This class wraps the native [HttpRequest] and provides parsed access to
 /// path parameters, query strings, decoded request bodies, and uploaded files.
 class Request {
+  /// Creates a new [Request] instance.
+  Request({
+    required this.rawRequest,
+    Map<String, dynamic>? params,
+    Map<String, dynamic>? query,
+    Map<String, dynamic>? body,
+    Map<String, UploadedFile>? files,
+  })  : params = params ?? {},
+        query = query ?? {},
+        body = body ?? {},
+        files = files ?? {},
+        attributes = {};
+
   /// The underlying native Dart HTTP request.
   final HttpRequest rawRequest;
 
@@ -24,20 +37,11 @@ class Request {
   /// Extra storage for middleware to attach data without polluting body.
   final Map<String, dynamic> attributes;
 
-  Request({
-    required this.rawRequest,
-    Map<String, dynamic>? params,
-    Map<String, dynamic>? query,
-    Map<String, dynamic>? body,
-    Map<String, UploadedFile>? files,
-  })  : params = params ?? {},
-        query = query ?? {},
-        body = body ?? {},
-        files = files ?? {},
-        attributes = {};
-
+  /// The HTTP method of the request.
   String get method => rawRequest.method;
+  /// The URI of the request.
   Uri get uri => rawRequest.uri;
+  /// The HTTP headers of the request.
   HttpHeaders get headers => rawRequest.headers;
 
   /// Convenience getter for the client's IP address.

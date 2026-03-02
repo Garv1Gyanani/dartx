@@ -4,11 +4,20 @@ import 'logger.dart';
 import 'config.dart';
 import '../http/response.dart';
 
+/// Interface for classes that handle global exceptions in the framework.
 abstract class ExceptionHandler {
+  /// Internal constructor for [ExceptionHandler].
+  ExceptionHandler();
+
+  /// Renders a [Response] from the given [error] and [ctx].
   Response render(Context ctx, Object error);
 }
 
+/// The default global exception handler for Kronix.
 class DefaultExceptionHandler implements ExceptionHandler {
+  /// Creates a new [DefaultExceptionHandler].
+  DefaultExceptionHandler();
+
   @override
   Response render(Context ctx, Object error) {
     final logger = Logger.withContext(ctx);

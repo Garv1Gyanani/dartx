@@ -26,10 +26,10 @@ import 'adapter.dart';
 /// }
 /// ```
 class Schema {
-  final DatabaseExecutor _db;
-
   /// Creates a new [Schema] tied to the given database [executor].
   Schema(this._db);
+
+  final DatabaseExecutor _db;
 
   /// Creates a new table with the given [name] using the [callback] to define columns.
   Future<void> create(String name, void Function(Blueprint table) callback) async {
@@ -63,7 +63,7 @@ class Schema {
   /// Checks if a table exists.
   Future<bool> hasTable(String name) async {
     final result = await _db.query(
-      "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = @name)",
+      'SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = @name)',
       {'name': name},
     );
     return result.rows.first['exists'] == true;
@@ -72,7 +72,7 @@ class Schema {
   /// Checks if a column exists on a table.
   Future<bool> hasColumn(String table, String column) async {
     final result = await _db.query(
-      "SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = @table AND column_name = @column)",
+      'SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = @table AND column_name = @column)',
       {'table': table, 'column': column},
     );
     return result.rows.first['exists'] == true;
@@ -88,11 +88,12 @@ class Schema {
 
 /// Defines the structure of a database table through a fluent API.
 class Blueprint {
+  /// Creates a new [Blueprint] for the given [table] name.
+  Blueprint(this._table);
+
   final String _table;
   final List<ColumnDefinition> _columns = [];
   final List<String> _constraints = [];
-
-  Blueprint(this._table);
 
   // ─── Column Types ────────────────────────────────────────────────
 
@@ -269,6 +270,9 @@ class Blueprint {
 /// 
 /// Supports chaining modifiers like [nullable], [unique], [defaultsTo], and [references].
 class ColumnDefinition {
+  ColumnDefinition._(this._name, this._type, {bool isPrimaryKey = false})
+      : _isPrimaryKey = isPrimaryKey;
+
   final String _name;
   final String _type;
   final bool _isPrimaryKey;
@@ -276,9 +280,6 @@ class ColumnDefinition {
   bool _unique = false;
   String? _default;
   String? _check;
-
-  ColumnDefinition._(this._name, this._type, {bool isPrimaryKey = false})
-      : _isPrimaryKey = isPrimaryKey;
 
   /// Marks this column as nullable.
   ColumnDefinition nullable() {

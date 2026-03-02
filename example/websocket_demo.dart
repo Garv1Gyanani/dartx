@@ -1,5 +1,5 @@
+import 'dart:convert';
 import 'package:kronix/kronix.dart';
-import 'dart:io';
 
 void main() async {
   final app = App();
@@ -97,7 +97,7 @@ void main() async {
     print('New Hub connection: ${conn.id}');
 
     conn.listen((data) {
-      final payload = Map<String, dynamic>.from(context.jsonDecode(data));
+      final payload = Map<String, dynamic>.from(jsonDecode(data));
       final action = payload['action'];
 
       if (action == 'join') {
@@ -134,7 +134,3 @@ void main() async {
   print('Hub Demo starting on http://localhost:3000');
   await app.listen(port: 3000);
 }
-
-// Minimal JSON shim for the example since context.jsonDecode isn't a mockable static here easily
-// without full context, but Kronix normally handles JSON.
-import 'dart:convert' as context;

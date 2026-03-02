@@ -1,11 +1,10 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:kronix/kronix.dart';
 
 void main() async {
-  print('============================================');
-  print('   kronix FRAMEWORK - BENCHMARK & VERIFY');
-  print('============================================\n');
+  stdout.writeln('============================================');
+  stdout.writeln('   KRONIX FRAMEWORK - BENCHMARK & VERIFY');
+  stdout.writeln('============================================\n');
 
   // 1. Verify Fixes
   await verifyFixes();
@@ -14,28 +13,29 @@ void main() async {
   await runRoutingBenchmark();
   await runValidationBenchmark();
   
-  print('\nAll tests complete.');
+  stdout.writeln('\nAll tests complete.');
   exit(0);
 }
 
+/// Verifies that known bugs have been fixed.
 Future<void> verifyFixes() async {
-  print('=== VERIFYING BUG FIXES ===');
+  stdout.writeln('=== VERIFYING BUG FIXES ===');
   
   // Config Override Fix
   Config.set('TEST_KEY', 'override');
   if (Config.get('TEST_KEY') == 'override') {
-    print('✅ [FIXED] Config overrides now work correctly.');
+    stdout.writeln('✅ [FIXED] Config overrides now work correctly.');
   } else {
-    print('❌ [STILL BROKEN] Config overrides failed.');
+    stdout.writeln('❌ [STILL BROKEN] Config overrides failed.');
   }
 
   // Response Headers Mutability
   final res = Response();
   try {
     res.headers['X-Verify'] = 'Internal';
-    print('✅ [FIXED] Response headers are now mutable (not const).');
+    stdout.writeln('✅ [FIXED] Response headers are now mutable (not const).');
   } catch (e) {
-    print('❌ [STILL BROKEN] Response headers are still immutable.');
+    stdout.writeln('❌ [STILL BROKEN] Response headers are still immutable.');
   }
 
   // Auth response format
@@ -45,17 +45,18 @@ Future<void> verifyFixes() async {
   // We just want to see if verify() returns a Response.json or plain Response
   final verifyMiddleware = auth.verify();
   final response = await verifyMiddleware(ctx, () async => Response.ok('next'));
-  if (response.headers['Content-Type'] == 'application/json') {
-    print('✅ [FIXED] Auth middleware now returns JSON responses.');
+  if (response.headers['Content-Type'] == 'application/json; charset=utf-8') {
+    stdout.writeln('✅ [FIXED] Auth middleware now returns JSON responses.');
   } else {
-    print('❌ [STILL BROKEN] Auth middleware still returns plain text.');
+    stdout.writeln('❌ [STILL BROKEN] Auth middleware still returns plain text.');
   }
   
-  print('');
+  stdout.writeln('');
 }
 
+/// Benchmarks the routing engine's performance.
 Future<void> runRoutingBenchmark() async {
-  print('=== ROUTING PERFORMANCE ===');
+  stdout.writeln('=== ROUTING PERFORMANCE ===');
   final router = Router();
   
   // Register 1000 routes
@@ -71,21 +72,22 @@ Future<void> runRoutingBenchmark() async {
   sw.stop();
   
   final avg = sw.elapsedMicroseconds / iterations;
-  print('Matched $iterations routes in ${sw.elapsedMilliseconds}ms');
-  print('Average match time: ${avg.toStringAsFixed(2)}µs');
+  stdout.writeln('Matched $iterations routes in ${sw.elapsedMilliseconds}ms');
+  stdout.writeln('Average match time: ${avg.toStringAsFixed(2)}µs');
   
   if (avg < 5.0) {
-    print('🚀 Performance: EXCELLENT (< 5µs)');
+    stdout.writeln('🚀 Performance: EXCELLENT (< 5µs)');
   } else if (avg < 20.0) {
-    print('⚡ Performance: GOOD (< 20µs)');
+    stdout.writeln('⚡ Performance: GOOD (< 20µs)');
   } else {
-    print('🐢 Performance: NEEDS OPTIMIZATION (> 20µs)');
+    stdout.writeln('🐢 Performance: NEEDS OPTIMIZATION (> 20µs)');
   }
-  print('');
+  stdout.writeln('');
 }
 
+/// Benchmarks the validation engine's performance.
 Future<void> runValidationBenchmark() async {
-  print('=== VALIDATION PERFORMANCE ===');
+  stdout.writeln('=== VALIDATION PERFORMANCE ===');
   final rules = {
     'email': 'required|email',
     'password': 'required|min:8',
@@ -93,49 +95,85 @@ Future<void> runValidationBenchmark() async {
     'age': 'numeric',
   };
   
-  final data = {
+  final data = <String, dynamic>{
     'email': 'test@example.com',
     'password': 'password123',
-    'name': 'kronix Tester',
+    'name': 'Kronix Tester',
     'age': '25',
   };
   
   final sw = Stopwatch()..start();
   const iterations = 10000;
   for (var i = 0; i < iterations; i++) {
-    Validator.validate(data, rules);
+    await Validator.validate(data, rules);
   }
   sw.stop();
   
   final avg = sw.elapsedMicroseconds / iterations;
-  print('Validated $iterations objects in ${sw.elapsedMilliseconds}ms');
-  print('Average validation time: ${avg.toStringAsFixed(2)}µs');
-  print('');
+  stdout.writeln('Validated $iterations objects in ${sw.elapsedMilliseconds}ms');
+  stdout.writeln('Average validation time: ${avg.toStringAsFixed(2)}µs');
+  stdout.writeln('');
 }
 
 // ─── MOCKS ───────────────────────────────────────────────────────
 
+/// Mock [HttpRequest] for testing.
 class MockHttpRequest implements HttpRequest {
-  @override final String method;
-  @override final Uri uri;
-  @override final HttpHeaders headers = MockHttpHeaders();
-  @override final HttpResponse response = MockHttpResponse();
-  @override int get contentLength => 0;
-  
+  /// Creates a new [MockHttpRequest].
   MockHttpRequest(this.method, String path) : uri = Uri.parse(path);
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  final String method;
+
+  @override
+  final Uri uri;
+
+  @override
+  final HttpHeaders headers = MockHttpHeaders();
+
+  @override
+  final HttpResponse response = MockHttpResponse();
+
+  @override
+  int get contentLength => 0;
+  
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpResponse] for testing.
 class MockHttpResponse implements HttpResponse {
-  @override int statusCode = 200;
-  @override final HttpHeaders headers = MockHttpHeaders();
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  /// Creates a new [MockHttpResponse].
+  MockHttpResponse();
+
+  @override
+  int statusCode = 200;
+
+  @override
+  final HttpHeaders headers = MockHttpHeaders();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Mock [HttpHeaders] for testing.
 class MockHttpHeaders implements HttpHeaders {
-  final Map<String, List<String>> _data = {};
-  @override void add(String name, Object value, {bool preserveHeaderCase = false}) => _data[name] = [value.toString()];
-  @override String? value(String name) => _data[name]?.first;
-  @override void set(String name, Object value, {bool preserveHeaderCase = false}) => _data[name] = [value.toString()];
-  @override dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  /// Creates a new [MockHttpHeaders].
+  MockHttpHeaders();
+
+  final Map<String, List<String>> _data = <String, List<String>>{};
+
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) =>
+      _data[name] = <String>[value.toString()];
+
+  @override
+  String? value(String name) => _data[name]?.first;
+
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) =>
+      _data[name] = <String>[value.toString()];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

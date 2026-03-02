@@ -1,5 +1,8 @@
 /// Abstract interface for cache storage drivers.
 abstract class CacheDriver {
+  /// Internal constructor for [CacheDriver].
+  CacheDriver();
+
   /// Retrieves an item from the cache.
   Future<dynamic> get(String key);
 

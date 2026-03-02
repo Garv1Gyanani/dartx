@@ -21,7 +21,7 @@ void main() async {
   app.post('/login', (ctx) async {
     // 2. Validate with "The kronix Way"
     // This will automatically throw AbortException with a 422 response if it fails.
-    final data = ctx.validate(LoginRequest());
+    final data = await ctx.validate(LoginRequest());
     
     // 3. Logic only runs if validation passes
     return ctx.json({
@@ -32,7 +32,7 @@ void main() async {
 
   // Example of manual validation
   app.post('/register', (ctx) async {
-    final validated = ctx.validateData({
+    final validated = await ctx.validateData({
       'username': 'required|min:3',
       'age': 'numeric',
     });

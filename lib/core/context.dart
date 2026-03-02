@@ -1,44 +1,54 @@
 import 'dart:io';
 import 'dart:math';
+
 import 'package:mime/mime.dart';
-import '../http/request.dart';
-import '../http/response.dart';
-import '../di/container.dart';
+
 import '../database/adapter.dart';
 import '../database/model.dart';
 import '../database/model_query.dart';
-import 'validator.dart';
-import 'exceptions.dart';
-import 'websocket.dart';
-import '../session/session.dart';
+import '../di/container.dart';
 import '../filesystem/storage.dart';
+import '../http/request.dart';
+import '../http/response.dart';
 import '../queue/queue.dart';
+import '../session/session.dart';
+import 'exceptions.dart';
+import 'validator.dart';
+import 'websocket.dart';
 
+/// Exception thrown to immediately terminate a request with a specific [response].
 class AbortException implements Exception {
-  final Response response;
+  /// Creates a new [AbortException] with the given [response].
   AbortException(this.response);
+
+  /// The response to send.
+  final Response response;
 }
 
 /// Encapsulates the state of a single HTTP request and its lifecycle.
-/// 
+///
 /// The [Context] provides access to the [Request] data, a request-scoped
 /// dependency injection [Container], and convenience methods for generating
 /// responses. It also tracks the request's execution time.
 class Context {
+  /// Initializes a new [Context] for the given [request] and [container].
+  Context(this.request, {required this.container}) : requestId = _generateRequestId();
+
   /// The incoming HTTP request data.
   final Request request;
-  
+
   /// The dependency injection container scoped specifically to this request.
   final Container container;
-  
+
   /// A unique 8-character identifier for this request, used for log correlation.
   final String requestId;
+
   final Stopwatch _stopwatch = Stopwatch()..start();
-  final Map<String, dynamic> _data = {};
+  final Map<String, dynamic> _data = <String, dynamic>{};
   Response? _response;
 
-  Context(this.request, {required this.container}) 
-    : requestId = _generateRequestId();
+  /// Returns the total elapsed time since the request was created.
+  Duration get elapsed => _stopwatch.elapsed;
 
   /// Sets a value in the request-scoped data storage.
   void set(String key, dynamic value) => _data[key] = value;
@@ -52,63 +62,71 @@ class Context {
     return List.generate(8, (_) => chars[rnd.nextInt(chars.length)]).join();
   }
 
+  /// Resolves an instance of type [T] from the request container.
   T resolve<T>({String? name}) => container.resolve<T>(name: name);
 
+  /// Validates the request body against a [FormRequest].
   Future<Map<String, dynamic>> validate(FormRequest request) async {
-    return await validateData(request.rules(), request.messages());
+    return validateData(request.rules(), request.messages());
   }
 
-  Future<Map<String, dynamic>> validateData(Map<String, String> rules, [Map<String, String>? messages]) async {
-    final result = await Validator.validate(body, rules, messages);
-    
-    if (result.fails) {
-      throw ValidationException(result.errors);
+  /// Validates the request body against the given [rules].
+  Future<Map<String, dynamic>> validateData(
+    Map<String, String> rules, [
+    Map<String, String>? messages,
+  ]) async {
+    final res = await Validator.validate(body, rules, messages);
+
+    if (res.fails) {
+      throw ValidationException(res.errors);
     }
-    
-    // Merge coerced data back into request body or return as "cleaned" data
-    // Usually, we return the cleaned data so the controller doesn't use unvalidated input
-    return result.data;
+
+    return res.data;
   }
 
+  /// Immediately terminates the request with the given [res].
   void abort(Response res) {
     throw AbortException(res);
   }
 
+  /// Returns the response object.
   Response get response => _response ?? Response(statusCode: 404);
   set response(Response res) => _response = res;
 
-  Duration get elapsed => _stopwatch.elapsed;
-
+  /// Generates a JSON response.
   Response json(dynamic data, {int status = 200}) {
     return Response.json(data, status: status);
   }
 
-  Response html(String html, {int status = 200}) {
-    return Response.html(html, status: status);
+  /// Generates an HTML response.
+  Response html(String content, {int status = 200}) {
+    return Response.html(content, status: status);
   }
 
-  Response text(String text, {int status = 200}) {
-    return Response(body: text, statusCode: status);
+  /// Generates a plain text response.
+  Response text(String content, {int status = 200}) {
+    return Response(body: content, statusCode: status);
   }
 
-  Response redirect(String url, {int status = 302}) {
-    return Response.redirect(url, status: status);
+  /// Generates a redirect response.
+  Response redirect(String location, {int status = 302}) {
+    return Response.redirect(location, status: status);
   }
 
   /// Serves a file from the local filesystem.
-  /// 
+  ///
   /// Automatically detects the content-type and uses efficient streaming.
   Response file(String path) {
     final f = File(path);
     if (!f.existsSync()) {
-      return json({'message': 'File not found'}, status: 404);
+      return json(<String, String>{'message': 'File not found'}, status: 404);
     }
 
     final mimeType = lookupMimeType(path) ?? 'application/octet-stream';
     return Response(
       body: f.openRead(),
       statusCode: 200,
-      headers: {'content-type': mimeType},
+      headers: <String, String>{'content-type': mimeType},
     );
   }
 
@@ -118,13 +136,18 @@ class Context {
     if (res.statusCode != 200) return res;
 
     final name = filename ?? path.split(Platform.pathSeparator).last;
-    return res.withHeaders({
+    return res.withHeaders(<String, String>{
       'content-disposition': 'attachment; filename="$name"',
     });
   }
 
+  /// Returns the path parameters of the request.
   Map<String, dynamic> get params => request.params;
+
+  /// Returns the query parameters of the request.
   Map<String, dynamic> get queryParams => request.query;
+
+  /// Returns the body of the request.
   Map<String, dynamic> get body => request.body;
 
   /// Returns the user session, if SessionMiddleware is active.
@@ -155,7 +178,7 @@ class Context {
   Storage get storage => resolve<Storage>();
 
   /// Retrieves the active [DatabaseExecutor] from the [Container].
-  /// 
+  ///
   /// If a transaction middleware is active, this returns the transaction scope.
   /// Otherwise, returns the global [DatabaseAdapter].
   DatabaseExecutor get db {
@@ -167,7 +190,7 @@ class Context {
   }
 
   /// Creates a type-safe [ModelQuery] for the given model type [T].
-  /// 
+  ///
   /// ```dart
   /// final users = await ctx.query<User>(User.fromRow).where('active', '=', true).get();
   /// final user = await ctx.query<User>(User.fromRow).find(1);
@@ -181,9 +204,9 @@ class Context {
 
   /// Disposes of the request-scoped [Container] and cleans up temporary files.
   Future<void> dispose() async {
-    for (var file in request.files.values) {
+    for (final f in request.files.values) {
       try {
-        await file.delete();
+        await f.delete();
       } catch (_) {
         // Best effort cleanup
       }
